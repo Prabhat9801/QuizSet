@@ -39,6 +39,11 @@ export type Exam = {
   status: 'Published' | 'Draft' | 'Upcoming' | 'Archived';
   students: number;
   subject: string;
+  // Which students can see this exam. Empty array = every student in the
+  // tenant (the default, matching LiveTest.participantIds' convention) —
+  // a coaching only needs to fill this in when it wants to restrict an exam
+  // to specific students rather than its whole roster.
+  assignedStudentIds: string[];
 };
 
 export type Student = {
@@ -60,40 +65,61 @@ export type Question = {
   options: string[];
   answer: number;
   explanation: string;
+  // Unit is the broad syllabus section (e.g. "Quantitative Aptitude");
+  // topic is the specific concept within it (e.g. "Percentage"). This
+  // two-level hierarchy is what Topic-wise / Unit-wise practice modes group
+  // by — without it those modes would have nothing real to filter on.
+  unit: string;
   topic: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';
 };
 
-// A question bank is what a syllabus request eventually produces. An exam
-// always draws its question set from exactly one bank.
+// A question bank is what a question-bank request eventually produces. An
+// exam always draws its question set from exactly one bank.
+//
+// Status is a content-review pipeline, not just a build-progress tracker:
+//   Generating       -> only the platform owner can see it (being written)
+//   Platform Review  -> platform owner is checking it; still invisible to
+//                       the coaching that asked for it
+//   Coaching Review  -> now visible to the coaching owner, who can view AND
+//                       edit every question — but an exam using this bank
+//                       still cannot be published; students see nothing yet
+//   Finalized        -> the coaching owner explicitly approved it; an exam
+//                       using this bank may now be published
+export type QuestionBankStatus = 'Generating' | 'Platform Review' | 'Coaching Review' | 'Finalized';
+
 export type QuestionBank = {
   id: string;
   tenantId: string;
   name: string;
   subject: string;
-  status: 'Pending' | 'In Progress' | 'Ready';
-  requestId?: string; // the syllabus request that produced it, if any
+  status: QuestionBankStatus;
+  requestId?: string; // the request that produced it, if any
 };
 
-export type RequestStatus =
-  | 'Pending'
-  | 'Under Review'
-  | 'Question Bank Being Created'
-  | 'Question Bank Ready'
-  | 'Published';
+// Coarse — just "is there a bank yet, and is it done". The bank's own
+// `QuestionBankStatus` carries the fine-grained review stage; duplicating
+// that same 4-way state here would just be two sources of truth to keep in
+// sync, so this only tracks what a request needs to track for itself.
+export type RequestStatus = 'Pending' | 'In Progress' | 'Finalized';
 
 // A coaching's ask to the platform owner: "build me a question bank for this
-// syllabus." Mirrors the syllabus_requests concept from the real backend —
-// this is the frontend-only stand-in for that same workflow.
+// exam." Mirrors the syllabus_requests concept from the real backend — this
+// is the frontend-only stand-in for that same workflow.
 export type QuestionBankRequest = {
   id: string;
   tenantId: string;
-  examName: string;
+  examId: string; // the real, already-created exam this bank is for
+  examName: string; // denormalized at request time, so lists don't need an extra lookup
   subjects: string[];
   questionsRequired: number;
   difficulty: string;
   priority: 'Low' | 'Medium' | 'High';
   notes?: string;
+  // Filled in by the coaching only if it already knows its own syllabus
+  // breakdown; when empty, the platform owner derives units/topics from the
+  // uploaded syllabus file instead — see services/mock.ts's advance() docs.
+  unitsTopics?: string;
   syllabusFileName?: string;
   status: RequestStatus;
   questionBankId?: string; // set once a bank is created against this request
@@ -133,6 +159,19 @@ export type LiveTest = {
 
 export type LiveTestPhase = 'Draft' | 'Upcoming' | 'Live' | 'Ended' | 'Cancelled';
 
+// What a student picked on the Quiz Setup screen before starting a practice
+// attempt. Recorded on the Attempt so no-repeat tracking can ask "which
+// questions has this student already seen in exactly this mode+scope" —
+// each mode+scope combination gets its own independent history, matching
+// the original quiz-ITI behaviour (a Topic-wise run on "Percentage" doesn't
+// affect what a Custom run sees, and vice versa).
+export type PracticeScope =
+  | { mode: 'full' }
+  | { mode: 'topic'; topics: string[] }
+  | { mode: 'unit'; units: string[] }
+  | { mode: 'multi-unit'; units: string[] }
+  | { mode: 'custom'; topics: string[]; units: string[] };
+
 // One finished quiz/exam/live-test run, saved so history/review/leaderboard
 // have a real record to read from instead of recomputing from nothing.
 export type Attempt = {
@@ -142,6 +181,7 @@ export type Attempt = {
   examId: string;
   liveTestId?: string;
   mode: 'practice' | 'timed';
+  practiceScope?: PracticeScope; // only set for mode: 'practice'
   answers: Record<number, number>; // question index -> chosen option index
   questionIds: string[]; // snapshot of the exact questions attempted, in order
   score: number; // correct count

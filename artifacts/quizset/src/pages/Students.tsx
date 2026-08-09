@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Check, Clock3, Pause, Play, Search, UserCheck, UserMinus, Users, X } from 'lucide-react';
+import { Check, Clock3, Pause, Play, UserCheck, UserMinus, Users, X } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, PageHeader, Stat, Tabs } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
 import { joinRequestService, studentService } from '@/services/mock';
@@ -10,6 +10,8 @@ export function StudentsPage() {
   const [tab, setTab] = useState('students');
   const [items, setItems] = useState<Student[]>([]);
   const [requests, setRequests] = useState<JoinRequest[]>([]);
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [query, setQuery] = useState('');
 
   const load = useCallback(async () => {
     if (!tenantId) return;
@@ -38,6 +40,10 @@ export function StudentsPage() {
   const active = items.filter((s) => s.status === 'Active').length;
   const pending = items.filter((s) => s.status === 'Pending').length;
   const suspended = items.filter((s) => s.status === 'Suspended').length;
+  const q = query.trim().toLowerCase();
+  const filteredStudents = items.filter(
+    (s) => (statusFilter === 'All' || s.status === statusFilter) && (!q || s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q))
+  );
 
   return (
     <>
@@ -64,16 +70,29 @@ export function StudentsPage() {
             <EmptyState title="No students yet" description={`Share your join code (${tenant.joinCode}) so students can join.`} />
           </Card>
         ) : (
-          <Card>
+          <>
+            <Card className="filter-bar">
+              <input type="text" placeholder="Search by name or email" value={query} onChange={(e) => setQuery(e.target.value)} />
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="All">All statuses</option>
+                <option value="Active">Active</option>
+                <option value="Pending">Pending</option>
+                <option value="Suspended">Suspended</option>
+              </select>
+              <span className="filter-count">
+                {filteredStudents.length} of {items.length}
+              </span>
+            </Card>
+            <Card>
             <div className="card-title">
               <div>
                 <h2>Student directory</h2>
                 <p>{tenant.name} · all cohorts</p>
               </div>
-              <Button variant="ghost">
-                <Search size={14} /> Search
-              </Button>
             </div>
+            {filteredStudents.length === 0 ? (
+              <EmptyState title="No students match" description="Try a different search or status." />
+            ) : (
             <div className="table-wrap">
               <table className="data-table">
                 <thead>
@@ -88,7 +107,7 @@ export function StudentsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((s) => (
+                  {filteredStudents.map((s) => (
                     <tr key={s.id}>
                       <td>
                         <b>{s.name}</b>
@@ -125,7 +144,9 @@ export function StudentsPage() {
                 </tbody>
               </table>
             </div>
-          </Card>
+            )}
+            </Card>
+          </>
         ))}
 
       {tab === 'requests' &&

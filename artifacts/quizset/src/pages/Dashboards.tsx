@@ -21,7 +21,7 @@ export function PlatformDashboard() {
       setStudentCount(counts.reduce((sum, list) => sum + list.length, 0));
     });
     paymentService.list().then((all) => setRevenue(all.filter((t) => t.status === 'Success').reduce((sum, t) => sum + t.amount, 0)));
-    questionBankRequestService.list().then((all) => setPendingRequests(all.filter((r) => r.status !== 'Published').length));
+    questionBankRequestService.list().then((all) => setPendingRequests(all.filter((r) => r.status !== 'Finalized').length));
   }, []);
 
   return (

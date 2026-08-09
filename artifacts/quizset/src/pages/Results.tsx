@@ -55,16 +55,32 @@ export function ResultsHistory() {
   );
 }
 
-/** Question-by-question review of one saved attempt. */
+/** Question-by-question review of one saved attempt — the student's own history. */
 export function ResultReview() {
   const [, params] = useRoute('/student/results/:id');
+  if (!params?.id) return null;
+  return <AttemptReviewBody attemptId={params.id} backHref="/student/results" backLabel="Back to results" />;
+}
+
+/**
+ * Same review, reached from a coaching owner's per-exam student dashboard
+ * instead of the student's own history — attemptService.get() has no
+ * ownership check, so this is safe to reuse as-is, just with a different
+ * back link and route (gated to the coaching role, not student).
+ */
+export function CoachingAttemptReview() {
+  const [, params] = useRoute('/coaching/exams/:examId/results/:id');
+  if (!params?.id || !params?.examId) return null;
+  return <AttemptReviewBody attemptId={params.id} backHref={`/coaching/exams/${params.examId}/students`} backLabel="Back to student dashboard" />;
+}
+
+function AttemptReviewBody({ attemptId, backHref, backLabel }: { attemptId: string; backHref: string; backLabel: string }) {
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [exam, setExam] = useState<Exam | null>(null);
   const [questions, setQuestions] = useState<Question[] | null>(null);
 
   useEffect(() => {
-    if (!params?.id) return;
-    attemptService.get(params.id).then(async (a) => {
+    attemptService.get(attemptId).then(async (a) => {
       if (!a) return;
       setAttempt(a);
       const [e, { questionService }] = await Promise.all([examService.get(a.examId), import('@/services/mock')]);
@@ -73,7 +89,7 @@ export function ResultReview() {
       // Reconstruct in the exact order the attempt recorded, not the bank's current order.
       setQuestions(a.questionIds.map((id) => allInBank.find((q) => q.id === id)).filter(Boolean) as Question[]);
     });
-  }, [params?.id]);
+  }, [attemptId]);
 
   if (!attempt || !exam || !questions) return <Skeleton className="skeleton-page" />;
 
@@ -102,8 +118,8 @@ export function ResultReview() {
             <p>
               You answered {attempt.totalAttempted} of {questions.length} questions in {formatTimer(attempt.timeTakenSeconds)}.
             </p>
-            <Link href="/student/results" className="btn btn-secondary">
-              <ArrowLeft size={14} /> Back to results
+            <Link href={backHref} className="btn btn-secondary">
+              <ArrowLeft size={14} /> {backLabel}
             </Link>
           </div>
         </div>

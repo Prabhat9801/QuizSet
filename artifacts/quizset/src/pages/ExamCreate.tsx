@@ -1,60 +1,56 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, BookOpen, Check, Lock, Send } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, ArrowRight, Check, Send } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
-import { Alert, Badge, Button, Card, Field, PageHeader } from '@/components/ui';
+import { Alert, Button, Card, Field, PageHeader } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { examService, questionBankService } from '@/services/mock';
-import { ExamType, QuestionBank } from '@/types';
+import { examService } from '@/services/mock';
+import { ExamType } from '@/types';
 import { formatRupees } from '@/lib/format';
 
-const STEPS = ['Basic details', 'Question bank', 'Configuration', 'Pricing', 'Publishing'];
+const STEPS = ['Basic details', 'Configuration', 'Pricing', 'Review & create'];
 const EXAM_TYPES: ExamType[] = ['Practice Quiz', 'Mock Test', 'Live Test', 'Previous Year', 'Topic-wise'];
 
+/**
+ * Exam-first, bank-second: a question bank is always requested FOR a
+ * specific exam (see QuestionBanks.tsx), so it can't be chosen here — the
+ * exam has to exist first. This wizard creates a Draft exam with no bank
+ * yet; the "Request question bank" step happens from ExamEdit right after.
+ */
 export function CreateExam() {
-  const { tenant, tenantId, toast } = useApp();
+  const { tenantId, toast } = useApp();
   const [, navigate] = useLocation();
   const [step, setStep] = useState(0);
-  const [banks, setBanks] = useState<QuestionBank[]>([]);
-  const [form, setForm] = useState({ name: '', description: '', type: 'Mock Test' as ExamType, questionBankId: '', duration: '30', mrp: '', sale: '0', preview: '5', subject: 'General' });
-
-  useEffect(() => {
-    if (tenantId) questionBankService.list(tenantId).then(setBanks);
-  }, [tenantId]);
-
-  const readyBanks = banks.filter((b) => b.status === 'Ready');
-  const canProceedFromBankStep = Boolean(form.questionBankId);
+  const [form, setForm] = useState({ name: '', description: '', subject: 'General', type: 'Mock Test' as ExamType, duration: '30', mrp: '', sale: '0', preview: '5' });
 
   const salePaise = Math.max(0, Number(form.sale) || 0);
   const mrpPaise = form.mrp.trim() ? Math.max(0, Number(form.mrp) || 0) : 0;
   const invalidMrp = mrpPaise > 0 && mrpPaise < salePaise;
 
-  const finish = async (status: 'Draft' | 'Published') => {
-    if (!tenantId || !form.questionBankId) return;
-    const bank = banks.find((b) => b.id === form.questionBankId);
+  const finish = async () => {
+    if (!tenantId || !form.name.trim()) return;
     const exam = await examService.create({
       tenantId,
-      questionBankId: form.questionBankId,
-      name: form.name || 'New Assessment',
+      name: form.name.trim(),
       description: form.description || undefined,
+      subject: form.subject || 'General',
       type: form.type,
       duration: form.type === 'Practice Quiz' ? 0 : Math.max(0, Number(form.duration) || 0),
       mrp: mrpPaise || salePaise,
       sale: salePaise,
       preview: Math.max(0, Number(form.preview) || 0),
-      status,
-      subject: bank?.subject || 'General',
+      status: 'Draft',
     });
-    toast(status === 'Published' ? 'Exam published' : 'Draft saved', status === 'Published' ? 'Your assessment is live in the learner library.' : 'You can publish it later from the exams list.');
+    toast('Exam created', 'Request a question bank next — it stays in Draft until that bank is finalized.');
     navigate(`/coaching/exams/${exam.id}`);
   };
 
   const next = () => {
-    if (step === 1 && !canProceedFromBankStep) {
-      toast('Choose a question bank', 'Select a ready bank to continue.', 'danger');
+    if (step === 0 && !form.name.trim()) {
+      toast('Name your exam', 'Give it a clear name before continuing.', 'danger');
       return;
     }
-    if (step < 4) setStep(step + 1);
-    else finish('Published');
+    if (step < STEPS.length - 1) setStep(step + 1);
+    else finish();
   };
 
   return (
@@ -62,7 +58,7 @@ export function CreateExam() {
       <PageHeader
         eyebrow="Exam studio"
         title="Create an exam"
-        description="A five-step path from a good question bank to a useful assessment."
+        description="Set the shape of the assessment now — you'll request its question bank right after."
         action={
           <Link href="/coaching/exams" className="btn btn-ghost">
             <ArrowLeft size={14} /> Back to exams
@@ -95,6 +91,9 @@ export function CreateExam() {
                   </select>
                 </Field>
               </div>
+              <Field label="Subject">
+                <input className="form-input" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} placeholder="Quantitative Aptitude, General English…" />
+              </Field>
               <Field label="Description">
                 <textarea className="form-input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What will this exam help learners practise?" />
               </Field>
@@ -102,29 +101,6 @@ export function CreateExam() {
           )}
 
           {step === 1 && (
-            <>
-              <h2 className="wizard-title">Choose the question bank.</h2>
-              <p className="wizard-sub">Only banks marked "Ready" can power an exam.</p>
-              {readyBanks.length === 0 ? (
-                <Alert tone="warning">No ready banks yet. Request one from Question Banks first.</Alert>
-              ) : (
-                <div className="choice-list">
-                  {banks.map((b) => (
-                    <div className={`choice ${form.questionBankId === b.id ? 'selected' : ''} ${b.status !== 'Ready' ? 'disabled' : ''}`} key={b.id} onClick={() => b.status === 'Ready' && setForm({ ...form, questionBankId: b.id, subject: b.subject })}>
-                      <BookOpen size={18} />
-                      <div>
-                        <b>{b.name}</b>
-                        <small>{b.subject} · {b.status}</small>
-                      </div>
-                      {b.status === 'Ready' ? form.questionBankId === b.id ? <Check size={16} /> : null : <Lock size={15} />}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-
-          {step === 2 && (
             <>
               <h2 className="wizard-title">Tune the experience.</h2>
               <p className="wizard-sub">
@@ -138,7 +114,7 @@ export function CreateExam() {
             </>
           )}
 
-          {step === 3 && (
+          {step === 2 && (
             <>
               <h2 className="wizard-title">Put a thoughtful price on it.</h2>
               <p className="wizard-sub">Make the value clear. A free preview helps students decide with confidence.</p>
@@ -157,16 +133,15 @@ export function CreateExam() {
             </>
           )}
 
-          {step === 4 && (
+          {step === 3 && (
             <>
-              <h2 className="wizard-title">Ready to publish.</h2>
-              <p className="wizard-sub">Review the essentials before your students see it.</p>
+              <h2 className="wizard-title">Ready to create.</h2>
+              <p className="wizard-sub">This exam starts in Draft — you'll request its question bank next, and can only publish once that bank is finalized.</p>
               <div className="publish-summary">
                 <b>{form.name || 'Untitled exam'}</b>
                 <span>
-                  {form.type} · {form.type === 'Practice Quiz' ? 'No timer' : `${form.duration} minutes`} · {salePaise ? formatRupees(salePaise) : 'Free'}
+                  {form.type} · {form.subject} · {form.type === 'Practice Quiz' ? 'No timer' : `${form.duration} minutes`} · {salePaise ? formatRupees(salePaise) : 'Free'}
                 </span>
-                <Badge tone={form.questionBankId ? 'success' : 'danger'}>{form.questionBankId ? 'Question bank linked' : 'No question bank selected'}</Badge>
               </div>
             </>
           )}
@@ -175,15 +150,10 @@ export function CreateExam() {
             <Button variant="ghost" disabled={step === 0} onClick={() => setStep(Math.max(0, step - 1))}>
               Previous
             </Button>
-            {step === 4 ? (
-              <>
-                <Button variant="secondary" onClick={() => finish('Draft')}>
-                  Save as draft
-                </Button>
-                <Button onClick={() => finish('Published')} disabled={invalidMrp || !form.questionBankId}>
-                  <Send size={14} /> Publish exam
-                </Button>
-              </>
+            {step === STEPS.length - 1 ? (
+              <Button onClick={finish} disabled={invalidMrp || !form.name.trim()}>
+                <Send size={14} /> Create exam
+              </Button>
             ) : (
               <Button onClick={next}>
                 Continue <ArrowRight size={14} />

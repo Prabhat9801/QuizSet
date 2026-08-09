@@ -1,13 +1,14 @@
-import { type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from 'react';
+import { type ButtonHTMLAttributes, type ChangeEvent, type HTMLAttributes, type ReactNode } from 'react';
 import { X } from 'lucide-react';
-export function Button({children,className='',variant='primary',...props}:{children:ReactNode;className?:string;variant?:'primary'|'secondary'|'ghost'|'danger' } & ButtonHTMLAttributes<HTMLButtonElement>) { return <button {...props} className={`btn btn-${variant} ${className}`}>{children}</button> }
+export function Button({children,className='',variant='primary',size='md',...props}:{children:ReactNode;className?:string;variant?:'primary'|'secondary'|'ghost'|'danger';size?:'sm'|'md' } & ButtonHTMLAttributes<HTMLButtonElement>) { return <button {...props} className={`btn btn-${variant} ${size==='sm'?'btn-sm':''} ${className}`}>{children}</button> }
 export function Badge({children,tone='neutral'}:{children:ReactNode;tone?:'neutral'|'success'|'warning'|'danger'|'info'}) { return <span className={`badge badge-${tone}`}>{children}</span> }
 export function Card({children,className='',...props}:{children:ReactNode;className?:string} & HTMLAttributes<HTMLElement>) { return <section {...props} className={`card ${className}`}>{children}</section> }
 export function Modal({title,children,onClose}:{title:string;children:ReactNode;onClose:()=>void}) { return <div className="modal-backdrop" role="dialog" aria-modal="true"><div className="modal"><div className="modal-head"><h3>{title}</h3><button data-testid="button-close-modal" onClick={onClose} className="icon-btn" aria-label="Close"><X size={18}/></button></div>{children}</div></div> }
 export function PageHeader({eyebrow,title,description,action}:{eyebrow?:string;title:string;description?:string;action?:ReactNode}) { return <div className="page-header"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1>{description&&<p>{description}</p>}</div>{action}</div> }
 export function Stat({label,value,delta,icon}:{label:string;value:string;delta?:string;icon?:ReactNode}) { return <Card className="stat-card"><div className="stat-top"><span className="stat-icon">{icon}</span><span className="stat-label">{label}</span></div><strong>{value}</strong>{delta&&<small className="stat-delta">{delta}</small>}</Card> }
 export function EmptyState({title,description,action}:{title:string;description:string;action?:ReactNode}) { return <div className="empty"><div className="empty-mark">QS</div><h3>{title}</h3><p>{description}</p>{action}</div> }
-export function Field({label,children,required}:{label:string;children:ReactNode;required?:boolean}) { return <label className="field"><span>{label}{required&&<i> *</i>}</span>{children}</label> }
+export function Field({label,children,required,htmlFor}:{label:string;children:ReactNode;required?:boolean;htmlFor?:string}) { return <label htmlFor={htmlFor} className="field"><span>{label}{required&&<i> *</i>}</span>{children}</label> }
+export function Checkbox({label,checked,onChange}:{label:string;checked:boolean;onChange:(e:ChangeEvent<HTMLInputElement>)=>void}) { return <label className="checkbox-row"><input type="checkbox" checked={checked} onChange={onChange} /><span>{label}</span></label> }
 export function Alert({children,tone='info'}:{children:ReactNode;tone?:'info'|'success'|'warning'|'danger'}) {
   if (!children) return null;
   return <div className={`alert alert-${tone}`}>{children}</div>;

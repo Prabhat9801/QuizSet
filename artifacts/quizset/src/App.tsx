@@ -18,8 +18,10 @@ import { ExamEdit } from '@/pages/ExamEdit';
 import { CreateExam } from '@/pages/ExamCreate';
 import { StudentsPage } from '@/pages/Students';
 import { StudentExams, ExamDetail, Preview } from '@/pages/StudentExamLibrary';
+import { QuizSetup } from '@/pages/QuizSetup';
 import { Attempt } from '@/pages/Attempt';
-import { ResultsHistory, ResultReview } from '@/pages/Results';
+import { ResultsHistory, ResultReview, CoachingAttemptReview } from '@/pages/Results';
+import { ExamStudentDashboard } from '@/pages/ExamStudentDashboard';
 import { LiveTests } from '@/pages/LiveTests';
 import { StudentLiveTests, LiveTestAttempt } from '@/pages/StudentLiveTests';
 import { NotificationsPage } from '@/pages/Notifications';
@@ -72,6 +74,8 @@ function Router() {
         {/* -------------------------------------------------------------- coaching */}
         <Route path="/coaching/dashboard">{() => <AppRoute component={CoachingDashboard} roles={['coaching']} />}</Route>
         <Route path="/coaching/exams/create">{() => <AppRoute component={CreateExam} roles={['coaching']} />}</Route>
+        <Route path="/coaching/exams/:id/students">{() => <AppRoute component={ExamStudentDashboard} roles={['coaching']} />}</Route>
+        <Route path="/coaching/exams/:examId/results/:id">{() => <AppRoute component={CoachingAttemptReview} roles={['coaching']} />}</Route>
         <Route path="/coaching/exams/:id">{() => <AppRoute component={ExamEdit} roles={['coaching']} />}</Route>
         <Route path="/coaching/exams">{() => <AppRoute component={() => <ExamsPage scope="coaching" />} roles={['coaching']} />}</Route>
         <Route path="/coaching/live-tests">{() => <AppRoute component={LiveTests} roles={['coaching']} />}</Route>
@@ -88,6 +92,7 @@ function Router() {
         <Route path="/student/join">{() => <AppRoute component={JoinFlow} roles={['student']} />}</Route>
         <Route path="/student/dashboard">{() => <AppRoute component={StudentDashboard} roles={['student']} />}</Route>
         <Route path="/student/exams/:id/preview">{() => <AppRoute component={Preview} roles={['student']} />}</Route>
+        <Route path="/student/exams/:id/setup">{() => <AppRoute component={QuizSetup} roles={['student']} />}</Route>
         <Route path="/student/exams/:id/attempt">{() => <AppRoute component={Attempt} roles={['student']} />}</Route>
         <Route path="/student/exams/:id">{() => <AppRoute component={ExamDetail} roles={['student']} />}</Route>
         <Route path="/student/exams">{() => <AppRoute component={StudentExams} roles={['student']} />}</Route>

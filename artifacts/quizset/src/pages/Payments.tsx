@@ -12,6 +12,8 @@ export function PaymentsPage({ scope = 'coaching' }: { scope?: 'coaching' | 'pla
   const { tenantId } = useApp();
   const [rows, setRows] = useState<Transaction[] | null>(null);
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [kindFilter, setKindFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
 
   useEffect(() => {
     const scopedTenantId = scope === 'coaching' ? tenantId ?? undefined : undefined;
@@ -25,6 +27,7 @@ export function PaymentsPage({ scope = 'coaching' }: { scope?: 'coaching' | 'pla
   const successful = rows.filter((r) => r.status === 'Success');
   const total = successful.reduce((sum, r) => sum + r.amount, 0);
   const today = successful.filter((r) => new Date(r.createdAt).toDateString() === new Date().toDateString()).reduce((sum, r) => sum + r.amount, 0);
+  const filteredRows = rows.filter((r) => (kindFilter === 'All' || r.kind === kindFilter) && (statusFilter === 'All' || r.status === statusFilter));
 
   return (
     <>
@@ -39,7 +42,30 @@ export function PaymentsPage({ scope = 'coaching' }: { scope?: 'coaching' | 'pla
           <EmptyState title="No transactions yet" description="Payments will show up here as students purchase exams, live tests or the AI assistant." />
         </Card>
       ) : (
-        <Card>
+        <>
+          <Card className="filter-bar">
+            <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value)}>
+              <option value="All">All products</option>
+              <option value="exam">Exam access</option>
+              <option value="live_test">Live test</option>
+              <option value="chatbot">AI assistant</option>
+            </select>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="All">All statuses</option>
+              <option value="Success">Success</option>
+              <option value="Pending">Pending</option>
+              <option value="Failed">Failed</option>
+            </select>
+            <span className="filter-count">
+              {filteredRows.length} of {rows.length}
+            </span>
+          </Card>
+          {filteredRows.length === 0 ? (
+            <Card>
+              <EmptyState title="No transactions match" description="Try a different product or status." />
+            </Card>
+          ) : (
+          <Card>
           <div className="table-wrap">
             <table className="data-table">
               <thead>
@@ -53,7 +79,7 @@ export function PaymentsPage({ scope = 'coaching' }: { scope?: 'coaching' | 'pla
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {filteredRows.map((r) => (
                   <tr key={r.id}>
                     <td>{r.id}</td>
                     {scope === 'platform' && <td>{tenantName(r.tenantId)}</td>}
@@ -71,6 +97,8 @@ export function PaymentsPage({ scope = 'coaching' }: { scope?: 'coaching' | 'pla
             </table>
           </div>
         </Card>
+          )}
+        </>
       )}
     </>
   );

@@ -9,12 +9,12 @@ import { formatRupees } from '@/lib/format';
 
 // ------------------------------------------------------------------ library
 export function StudentExams() {
-  const { tenant, tenantId } = useApp();
+  const { tenant, tenantId, user } = useApp();
   const [items, setItems] = useState<ExamWithCount[] | null>(null);
 
   useEffect(() => {
-    if (tenantId) examService.listWithCounts(tenantId).then((all) => setItems(all.filter((e) => e.status === 'Published')));
-  }, [tenantId]);
+    if (tenantId && user) examService.listForStudent(tenantId, user.id).then((all) => setItems(all.filter((e) => e.status === 'Published')));
+  }, [tenantId, user]);
 
   if (!items) return <Skeleton className="skeleton-page" />;
 
@@ -129,7 +129,7 @@ export function ExamDetail() {
           </div>
           <div className="detail-cta">
             {purchased ? (
-              <Link href={`/student/exams/${exam.id}/attempt`} className="btn btn-primary">
+              <Link href={exam.type === 'Practice Quiz' ? `/student/exams/${exam.id}/setup` : `/student/exams/${exam.id}/attempt`} className="btn btn-primary">
                 <Play size={15} /> {exam.type === 'Practice Quiz' ? 'Start practice' : 'Start full exam'}
               </Link>
             ) : (
@@ -166,7 +166,7 @@ export function ExamDetail() {
               <CheckCircle2 size={30} />
               <h3>Your full exam is unlocked.</h3>
               <p>Payment simulated successfully.</p>
-              <Link href={`/student/exams/${exam.id}/attempt`} className="btn btn-primary">
+              <Link href={exam.type === 'Practice Quiz' ? `/student/exams/${exam.id}/setup` : `/student/exams/${exam.id}/attempt`} className="btn btn-primary">
                 Start exam
               </Link>
             </div>
