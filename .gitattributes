@@ -1,0 +1,4 @@
+# Shell scripts must keep LF endings — a Windows checkout (core.autocrlf=true)
+# would otherwise rewrite them to CRLF, which breaks `#!/bin/sh` inside the
+# Linux container (docker-entrypoint.sh fails with "no such file or directory").
+*.sh text eol=lf

@@ -1,0 +1,14 @@
+# Never bake local state into the image.
+node_modules
+**/node_modules
+.git
+**/dist
+**/.cache
+**/.local
+.replit*
+**/.replit-artifact
+
+# Local secrets — this app has none today (frontend-only, no backend), but
+# keep the door closed so a stray .env never accidentally ships in an image.
+.env
+.env.*
