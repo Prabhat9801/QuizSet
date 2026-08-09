@@ -1,10 +1,133 @@
 import { Link, useLocation } from 'wouter';
-import { Bell, BookOpen, BrainCircuit, Building2, ChevronDown, CircleHelp, Command, CreditCard, Gauge, GraduationCap, Headphones, LayoutDashboard, Menu, Palette, Plus, Search, Settings, ShieldCheck, Sparkles, Users, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Bell, BookOpen, Building2, ChevronDown, CircleHelp, CreditCard, Gauge, GraduationCap, Menu, Palette, Play, Settings, Sparkles, Users, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
-import { Button } from '@/components/ui';
-const platformNav=[['/platform/dashboard','Dashboard',Gauge],['/platform/coachings','Coachings',Building2],['/platform/question-requests','Question Requests',BookOpen],['/platform/question-banks','Question Banks',BookOpen],['/platform/exams','Exams',GraduationCap],['/platform/students','Students',Users],['/platform/payments','Payments',CreditCard],['/platform/analytics','Analytics',Gauge],['/platform/ai-usage','AI Usage',BrainCircuit],['/platform/support','Support',Headphones],['/platform/notifications','Notifications',Bell],['/platform/settings','Settings',Settings]] as const;
-const coachingNav=[['/coaching/dashboard','Dashboard',Gauge],['/coaching/exams','Exams',GraduationCap],['/coaching/live-tests','Live Tests',ShieldCheck],['/coaching/students','Students',Users],['/coaching/question-banks','Question Banks',BookOpen],['/coaching/payments','Payments',CreditCard],['/coaching/analytics','Analytics',Gauge],['/coaching/ai','AI Assistant',Sparkles],['/coaching/notifications','Notifications',Bell],['/coaching/support','Support',Headphones],['/coaching/branding','Branding',Palette],['/coaching/settings','Settings',Settings]] as const;
-const studentNav=[['/student/dashboard','Overview',Gauge],['/student/exams','Exam library',BookOpen],['/student/results','Results',GraduationCap],['/student/leaderboard','Leaderboard',Users],['/student/study-plan','Study plan',BookOpen],['/student/ai','Study companion',Sparkles],['/student/performance','Performance',Gauge],['/student/notifications','Notifications',Bell],['/student/support','Support',Headphones],['/student/profile','Profile',Settings]] as const;
-export function AppShell({children}:{children:any}) { const {user,tenant,logout,switchTenant}=useApp(); const [loc,setLoc]=useLocation(); const [open,setOpen]=useState(false); const [profile,setProfile]=useState(false); const nav=user?.role==='platform'?platformNav:user?.role==='coaching'?coachingNav:studentNav; const title=user?.role==='platform'?'Platform command center':user?.role==='coaching'?tenant.name:'Rahul’s learning space'; const isStudent=user?.role==='student'; const [search,setSearch]=useState(false); const navItems=useMemo(()=>nav,[nav]); useEffect(()=>{const onKey=(event:KeyboardEvent)=>{if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='k'){event.preventDefault();setSearch(true)}if(event.key==='Escape')setSearch(false)};window.addEventListener('keydown',onKey);return()=>window.removeEventListener('keydown',onKey)},[]); return <div className={`app-shell ${isStudent?'student-shell':''}`}><aside className={`sidebar ${open?'open':''}`}><div className="brand"><span className="brand-mark">Q</span><span>QuizSet</span><button className="mobile-close icon-btn" onClick={()=>setOpen(false)}><X size={18}/></button></div><div className="workspace"><span className="workspace-dot" style={{background:user?.role==='coaching'?tenant.primaryColor:'#22d3ee'}}/><span>{title}</span>{user?.role==='platform'&&<select data-testid="select-tenant" value={tenant.id} onChange={e=>switchTenant(e.target.value)}><option value="sunrise">Sunrise</option><option value="career">Career Point</option><option value="success">Success Institute</option></select>}</div><nav>{navItems.map(([href,label,Icon])=><Link data-testid={`link-${label.toLowerCase().replaceAll(' ','-')}`} key={href} href={href} onClick={()=>setOpen(false)} className={loc===href||loc.startsWith(href+'/')?'active':''}><Icon size={17}/><span>{label}</span>{label==='Notifications'&&<b>3</b>}</Link>)}</nav><div className="sidebar-bottom"><div className="sidebar-note"><Sparkles size={16}/><span><strong>Build with signal.</strong><small>Insights are ready for review.</small></span></div><button data-testid="button-logout" className="logout" onClick={logout}>Sign out</button></div></aside><main className="main"><header className="topbar"><button className="mobile-menu icon-btn" onClick={()=>setOpen(true)}><Menu size={20}/></button><button data-testid="button-global-search" className="search-trigger" onClick={()=>setSearch(true)}><Search size={17}/><span>Search anything</span><kbd><Command size={11}/> K</kbd></button><div className="top-actions"><button data-testid="button-help" className="icon-btn"><CircleHelp size={18}/></button><Link data-testid="link-top-notifications" href={user?.role==='platform'?'/platform/notifications':user?.role==='coaching'?'/coaching/notifications':'/student/notifications'} className="icon-btn notification"><Bell size={18}/><i/></Link><button data-testid="button-profile-menu" className="profile-trigger" onClick={()=>setProfile(!profile)}><span className="avatar">{user?.name?.split(' ').map(s=>s[0]).join('').slice(0,2)}</span><span className="profile-name">{user?.name}</span><ChevronDown size={14}/></button>{profile&&<div className="profile-menu"><Link href={user?.role==='platform'?'/platform/settings':user?.role==='coaching'?'/coaching/settings':'/student/profile'}>Profile & settings</Link><button onClick={logout}>Sign out</button></div>}</div></header><div className="content page-enter">{children}</div></main>{search&&<SearchModal onClose={()=>setSearch(false)}/>}</div> }
-function SearchModal({onClose}:{onClose:()=>void}) { const [q,setQ]=useState(''); const {user}=useApp(); const [loc,setLoc]=useLocation(); const entries=[...(user?.role==='platform'?platformNav:user?.role==='coaching'?coachingNav:studentNav)]; const filtered=entries.filter(e=>e[1].toLowerCase().includes(q.toLowerCase())); return <div className="modal-backdrop" onClick={onClose}><div className="search-modal" onClick={e=>e.stopPropagation()}><div className="search-input"><Search size={18}/><input autoFocus data-testid="input-global-search" value={q} onChange={e=>setQ(e.target.value)} placeholder="Jump to a workspace page..." /><kbd>ESC</kbd></div>{filtered.map(([href,label,Icon])=><button data-testid={`search-result-${label}`} key={href} onClick={()=>{setLoc(href);onClose()}}><Icon size={17}/><span>{label}</span><ChevronDown size={14}/></button>)}{!filtered.length&&<p className="search-empty">No pages match “{q}”.</p>}</div></div> }
+
+// Nav is intentionally scoped to what's actually built. Removed vs the
+// original: global search (Ctrl+K — cut from scope), the platform-owner
+// tenant switcher (real tenant isolation now comes only from the logged-in
+// user, never a manually switchable value — see AppContext), Analytics /
+// AI Usage / Leaderboard / Study plan / Performance / Support (all cut from
+// this pass — see CLAUDE.md's "Known gaps" section for the reasoning).
+const platformNav = [
+  ['/platform/dashboard', 'Dashboard', Gauge],
+  ['/platform/coachings', 'Coachings', Building2],
+  ['/platform/question-requests', 'Question Requests', BookOpen],
+  ['/platform/question-banks', 'Question Banks', BookOpen],
+  ['/platform/exams', 'Exams', GraduationCap],
+  ['/platform/payments', 'Payments', CreditCard],
+  ['/platform/notifications', 'Notifications', Bell],
+  ['/platform/settings', 'Settings', Settings],
+] as const;
+
+const coachingNav = [
+  ['/coaching/dashboard', 'Dashboard', Gauge],
+  ['/coaching/exams', 'Exams', GraduationCap],
+  ['/coaching/live-tests', 'Live Tests', Play],
+  ['/coaching/students', 'Students', Users],
+  ['/coaching/question-banks', 'Question Banks', BookOpen],
+  ['/coaching/payments', 'Payments', CreditCard],
+  ['/coaching/ai', 'AI Assistant', Sparkles],
+  ['/coaching/notifications', 'Notifications', Bell],
+  ['/coaching/branding', 'Branding', Palette],
+  ['/coaching/settings', 'Settings', Settings],
+] as const;
+
+const studentNav = [
+  ['/student/dashboard', 'Overview', Gauge],
+  ['/student/exams', 'Exam library', BookOpen],
+  ['/student/live-tests', 'Live Tests', Play],
+  ['/student/results', 'Results', GraduationCap],
+  ['/student/ai', 'Study companion', Sparkles],
+  ['/student/notifications', 'Notifications', Bell],
+  ['/student/profile', 'Profile', Settings],
+] as const;
+
+export function AppShell({ children }: { children: any }) {
+  const { user, tenant, logout } = useApp();
+  const [loc] = useLocation();
+  const [open, setOpen] = useState(false);
+  const [profile, setProfile] = useState(false);
+  const isStudent = user?.role === 'student';
+  const nav = user?.role === 'platform' ? platformNav : user?.role === 'coaching' ? coachingNav : studentNav;
+  const navItems = useMemo(() => nav, [nav]);
+  const title = user?.role === 'platform' ? 'Platform command center' : user?.role === 'coaching' ? tenant.name : `${user?.name?.split(' ')[0] || 'Your'}'s learning space`;
+
+  return (
+    <div className={`app-shell ${isStudent ? 'student-shell' : ''}`}>
+      <aside className={`sidebar ${open ? 'open' : ''}`}>
+        <div className="brand">
+          <span className="brand-mark">Q</span>
+          <span>QuizSet</span>
+          <button className="mobile-close icon-btn" onClick={() => setOpen(false)}>
+            <X size={18} />
+          </button>
+        </div>
+        <div className="workspace">
+          <span className="workspace-dot" style={{ background: user?.role === 'coaching' ? tenant.primaryColor : '#22d3ee' }} />
+          <span>{title}</span>
+        </div>
+        <nav>
+          {navItems.map(([href, label, Icon]) => (
+            <Link key={href} href={href} onClick={() => setOpen(false)} className={loc === href || loc.startsWith(href + '/') ? 'active' : ''}>
+              <Icon size={17} />
+              <span>{label}</span>
+            </Link>
+          ))}
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="sidebar-note">
+            <Sparkles size={16} />
+            <span>
+              <strong>Build with signal.</strong>
+              <small>Insights are ready for review.</small>
+            </span>
+          </div>
+          <button className="logout" onClick={logout}>
+            Sign out
+          </button>
+        </div>
+      </aside>
+
+      <main className="main">
+        <header className="topbar">
+          <button className="mobile-menu icon-btn" onClick={() => setOpen(true)}>
+            <Menu size={20} />
+          </button>
+          <span className="topbar-title">{title}</span>
+          <div className="top-actions">
+            <button className="icon-btn">
+              <CircleHelp size={18} />
+            </button>
+            <Link href={user?.role === 'platform' ? '/platform/notifications' : user?.role === 'coaching' ? '/coaching/notifications' : '/student/notifications'} className="icon-btn notification">
+              <Bell size={18} />
+            </Link>
+            <button className="profile-trigger" onClick={() => setProfile(!profile)}>
+              <span className="avatar">{user?.name?.split(' ').map((s) => s[0]).join('').slice(0, 2)}</span>
+              <span className="profile-name">{user?.name}</span>
+              <ChevronDown size={14} />
+            </button>
+            {profile && (
+              <div className="profile-menu">
+                <Link href={user?.role === 'platform' ? '/platform/settings' : user?.role === 'coaching' ? '/coaching/settings' : '/student/profile'}>Profile &amp; settings</Link>
+                <button onClick={logout}>Sign out</button>
+              </div>
+            )}
+          </div>
+        </header>
+        <div className="content page-enter">{children}</div>
+      </main>
+
+      {isStudent && (
+        <nav className="bottom-nav">
+          {navItems.slice(0, 5).map(([href, label, Icon]) => (
+            <Link key={href} href={href} className={loc === href || loc.startsWith(href + '/') ? 'active' : ''}>
+              <Icon size={18} />
+              <span>{label}</span>
+            </Link>
+          ))}
+        </nav>
+      )}
+    </div>
+  );
+}

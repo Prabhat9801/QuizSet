@@ -1,0 +1,2656 @@
+You are a senior product architect, UX designer, frontend engineer and SaaS product designer.
+
+Build the COMPLETE FRONTEND of a production-quality B2B2C SaaS platform called:
+
+==================================================
+                    KOPI
+==================================================
+
+TAGLINE:
+"Your Coaching. Your Brand. Your Learning OS."
+
+KOPI is a white-label, multi-tenant, AI-powered digital operating system for coaching institutes.
+
+IMPORTANT:
+This is a FRONTEND-ONLY application for now.
+
+There must be NO real backend, NO database server, NO real payment gateway, NO real AI API and NO external authentication dependency.
+
+However, the application must behave like a real fully functional SaaS product by using:
+
+- React state
+- Context API where appropriate
+- localStorage
+- mock service layers
+- mock API responses
+- realistic seed data
+- simulated payments
+- simulated AI responses
+- simulated notifications
+- simulated analytics
+- realistic loading/error/empty states
+
+The architecture MUST be backend-ready so that real APIs can replace mock services later without rewriting the UI.
+
+==================================================
+1. PRODUCT VISION
+==================================================
+
+KOPI enables coaching institutes to launch, operate, monetize and scale their own branded online examination and AI-powered learning ecosystem.
+
+It combines:
+
+- White-label branding
+- Coaching management
+- Student management
+- Exam management
+- Question bank management
+- Practice quizzes
+- Mock tests
+- Live tests
+- Paid exams
+- Payments
+- AI chatbot
+- AI performance insights
+- Weak topic detection
+- Personalized study plans
+- Leaderboards
+- Business analytics
+- Academic analytics
+- Notifications
+- Support tickets
+- Multi-tenancy
+
+The three primary roles are:
+
+1. PLATFORM OWNER
+2. COACHING OWNER
+3. STUDENT
+
+Future roles may include:
+
+- Teacher
+- Content Creator
+- Moderator
+- Support Agent
+- Finance Manager
+- Sub Admin
+
+Do NOT build those future roles yet.
+
+==================================================
+2. CORE PRODUCT PRINCIPLE
+==================================================
+
+KOPI is NOT simply an online quiz application.
+
+It is:
+
+"Digital Operating System for Coaching Institutes"
+
+Think of the product conceptually like Shopify:
+
+KOPI provides technology.
+
+The coaching institute operates its own branded examination business.
+
+Each coaching institute is a separate tenant.
+
+Example:
+
+KOPI
+ |
+ +-- Sunrise Academy
+ |      |
+ |      +-- Students
+ |      +-- Exams
+ |      +-- Payments
+ |      +-- Analytics
+ |
+ +-- Career Point
+ |      |
+ |      +-- Students
+ |      +-- Exams
+ |      +-- Payments
+ |      +-- Analytics
+ |
+ +-- Success Institute
+
+Every tenant must appear isolated in the UI.
+
+==================================================
+3. BRAND / DESIGN DIRECTION
+==================================================
+
+Brand:
+KOPI
+
+Visual personality:
+
+- Premium
+- Modern
+- Trustworthy
+- Intelligent
+- Clean
+- Indian edtech
+- Professional enough for coaching owners
+- Friendly enough for students
+- Not childish
+- Not overly corporate
+- Not generic admin dashboard
+
+Use a modern SaaS visual language inspired by products such as:
+
+- Linear
+- Notion
+- Stripe Dashboard
+- Vercel
+- modern education platforms
+
+But DO NOT clone any existing product.
+
+Design should feel original.
+
+Suggested color system:
+
+Primary:
+#4F46E5
+
+Primary dark:
+#3730A3
+
+Secondary:
+#06B6D4
+
+Success:
+#16A34A
+
+Warning:
+#F59E0B
+
+Danger:
+#DC2626
+
+Background:
+#F8FAFC
+
+Card:
+#FFFFFF
+
+Text:
+#0F172A
+
+Muted:
+#64748B
+
+Border:
+#E2E8F0
+
+Use gradients very carefully.
+
+Use rounded cards but avoid excessive glassmorphism.
+
+Typography:
+Use Inter or a similarly clean modern sans-serif.
+
+==================================================
+4. TECH STACK
+==================================================
+
+Use:
+
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- React Router
+- Lucide React icons
+- Recharts
+- localStorage
+
+Use reusable components.
+
+Do NOT create one giant component.
+
+Recommended structure:
+
+src/
+  components/
+  layouts/
+  pages/
+  routes/
+  contexts/
+  services/
+  data/
+  hooks/
+  utils/
+  types/
+  styles/
+
+Create separate service abstractions such as:
+
+examService
+studentService
+coachingService
+paymentService
+analyticsService
+notificationService
+supportService
+aiService
+questionBankService
+liveTestService
+
+Initially these services must use mock data and localStorage.
+
+Example:
+
+examService.getExams()
+
+studentService.getStudents()
+
+paymentService.getTransactions()
+
+analyticsService.getAnalytics()
+
+notificationService.getNotifications()
+
+aiService.sendMessage()
+
+Later these methods should be replaceable with real API calls.
+
+==================================================
+5. AUTHENTICATION SIMULATION
+==================================================
+
+Create a beautiful KOPI login screen.
+
+Login page should have:
+
+Left:
+- KOPI logo
+- headline
+- short product statement
+- abstract education/exam illustration
+
+Right:
+Login card.
+
+Support demo login.
+
+Provide three demo accounts:
+
+PLATFORM OWNER
+email:
+admin@kopi.demo
+
+password:
+admin123
+
+COACHING OWNER
+email:
+owner@sunrise.demo
+
+password:
+owner123
+
+STUDENT
+email:
+rahul@student.demo
+
+password:
+student123
+
+Also provide visible demo buttons:
+
+"Continue as Platform Owner"
+
+"Continue as Coaching Owner"
+
+"Continue as Student"
+
+Clicking them should instantly authenticate into that role.
+
+Persist authentication in localStorage.
+
+Provide:
+
+logout()
+
+role switching only in DEMO MODE.
+
+Do NOT expose role switching as a production feature.
+
+==================================================
+6. GLOBAL APP SHELL
+==================================================
+
+After login, use a consistent SaaS layout:
+
+Desktop:
+
+Sidebar
++
+Top navigation
++
+Main content
+
+Sidebar should include:
+
+Logo
+Workspace selector
+Navigation
+Help
+User profile
+
+Topbar:
+
+Search
+Notifications
+Help
+Profile
+
+Responsive mobile layout:
+
+Bottom navigation or collapsible sidebar.
+
+Sidebar should change based on role.
+
+==================================================
+7. PLATFORM OWNER
+==================================================
+
+Create a complete Platform Owner dashboard.
+
+Sidebar:
+
+Dashboard
+Coachings
+Question Requests
+Question Banks
+Exams
+Students
+Payments
+AI Usage
+Analytics
+Support
+Notifications
+Settings
+
+Dashboard headline:
+
+"Platform Overview"
+
+KPI cards:
+
+Active Coachings
+127
+
+Total Students
+84,920
+
+MRR
+₹18.4L
+
+ARR
+₹2.2Cr
+
+Active AI Users
+31,420
+
+Pending Requests
+17
+
+Charts:
+
+Revenue Growth
+Coaching Growth
+Student Growth
+Exam Purchases
+AI Usage
+
+Use Recharts.
+
+Use realistic seed data.
+
+==================================================
+8. PLATFORM OWNER — COACHINGS
+==================================================
+
+Create coaching management.
+
+Table:
+
+Coaching
+Owner
+Students
+Plan
+Revenue
+Status
+Joined
+Actions
+
+Sample:
+
+Sunrise Academy
+Rajiv Sharma
+2,540
+Growth
+₹4,82,000
+Active
+
+Career Point
+Amit Verma
+1,890
+Enterprise
+₹3,42,000
+Active
+
+Success Institute
+Neha Jain
+950
+Starter
+₹1,21,000
+Trial
+
+Actions:
+
+View
+Edit
+Suspend
+Activate
+View Workspace
+
+Create Coaching button.
+
+Create Coaching form:
+
+Institute Name
+Owner Name
+Email
+Phone
+Logo
+Brand Color
+Plan
+Status
+
+After creation:
+
+Generate:
+
+Coaching ID
+Join Code
+Workspace
+
+Store in localStorage.
+
+==================================================
+9. PLATFORM OWNER — QUESTION REQUESTS
+==================================================
+
+Create complete request pipeline.
+
+Statuses:
+
+Pending
+Under Review
+Question Bank Being Created
+Question Bank Ready
+Questions Uploaded
+Exam Configured
+Published
+
+Request card/table should show:
+
+Coaching
+Exam
+Syllabus
+Questions Required
+Difficulty
+Priority
+Status
+Created Date
+
+Example:
+
+Sunrise Academy
+SSC CGL 2026
+500 Questions
+Easy + Medium + Hard
+High
+Pending
+
+Click request.
+
+Open detailed request drawer/page.
+
+Show:
+
+Exam requirements
+Subjects
+Syllabus file mock preview
+Question count
+Difficulty
+Requested exam types
+Notes
+
+Actions:
+
+Accept Request
+Reject
+Start Question Bank
+Mark Ready
+Upload Questions
+
+All actions should update mock state.
+
+==================================================
+10. PLATFORM OWNER — QUESTION BANKS
+==================================================
+
+Question bank management page.
+
+Cards/table:
+
+SSC CGL 2026
+500 Questions
+4 Subjects
+Ready
+
+Question structure:
+
+Question ID
+Question
+Option A
+Option B
+Option C
+Option D
+Correct Answer
+Explanation
+Topic
+Unit
+Difficulty
+
+ONLY MCQ.
+
+Create question bank UI.
+
+Allow adding/editing/deleting mock questions.
+
+Question preview should look like an actual exam question.
+
+==================================================
+11. COACHING OWNER
+==================================================
+
+Create separate branded Coaching Owner dashboard.
+
+When logged in as Sunrise Academy:
+
+The UI must use Sunrise Academy branding.
+
+Example:
+
+Logo:
+Sunrise Academy
+
+Primary color:
+Blue
+
+Support:
++91 XXXXX XXXXX
+
+The owner should feel like they are operating their own platform.
+
+Sidebar:
+
+Dashboard
+Exams
+Live Tests
+Students
+Question Banks
+Payments
+Analytics
+AI Assistant
+Notifications
+Support
+Branding
+Settings
+
+==================================================
+12. COACHING OWNER DASHBOARD
+==================================================
+
+Header:
+
+"Good Morning, Sunrise Academy"
+
+KPI cards:
+
+Revenue
+₹4,82,000
+
+Students
+2,540
+
+Active Students
+1,842
+
+Exams
+28
+
+Pending Requests
+3
+
+Quick actions:
+
+Create Exam
+Schedule Live Test
+View Students
+Request Question Bank
+
+Activity feed:
+
+"24 students purchased SSC CGL Mock Test."
+
+"Question bank for Railway Group D is ready."
+
+"Live test starts tomorrow."
+
+Use realistic timestamps.
+
+Charts:
+
+Revenue
+Student Growth
+Exam Sales
+Exam Performance
+
+==================================================
+13. COACHING — EXAMS
+==================================================
+
+Create Exams page.
+
+Tabs:
+
+All
+Published
+Draft
+Upcoming
+Archived
+
+Exam cards should show:
+
+Exam name
+Exam type
+Questions
+Duration
+MRP
+Sale Price
+Students
+Status
+
+Example:
+
+SSC CGL Premium Mock Test
+
+MRP:
+₹999
+
+Sale:
+₹499
+
+Questions:
+100
+
+Duration:
+60 min
+
+Free Preview:
+5 questions
+
+Status:
+Published
+
+Actions:
+
+View
+Edit
+Duplicate
+Publish
+Unpublish
+Analytics
+
+==================================================
+14. CREATE EXAM FLOW
+==================================================
+
+Create a multi-step wizard.
+
+STEP 1:
+Basic Details
+
+Exam Name
+Description
+Exam Type
+
+Types:
+
+Practice Quiz
+Mock Test
+Live Test
+Previous Year
+Topic-wise
+Unit-wise
+Custom
+Adaptive
+
+STEP 2:
+Question Bank
+
+Select Question Bank.
+
+STEP 3:
+Exam Configuration
+
+Number of Questions
+Duration
+Difficulty
+Eligibility
+
+STEP 4:
+Pricing
+
+MRP
+Sale Price
+Free Preview Questions
+
+STEP 5:
+Publishing
+
+Preview
+Save Draft
+Publish
+
+Make the wizard beautiful and highly usable.
+
+Use progress indicators.
+
+==================================================
+15. COACHING — STUDENTS
+==================================================
+
+Students page.
+
+KPI cards:
+
+Total Students
+Active
+Pending Requests
+Suspended
+
+Table:
+
+Student
+Email
+Phone
+Joined
+Exams
+Performance
+Status
+
+Actions:
+
+View Profile
+Assign Exam
+Suspend
+Remove
+View Performance
+
+Student profile page:
+
+Name
+Avatar
+Joined Date
+Tests Attempted
+Average Score
+Accuracy
+Strong Topics
+Weak Topics
+Recent Tests
+
+==================================================
+16. STUDENT JOIN SYSTEM
+==================================================
+
+Build two flows.
+
+FLOW A:
+
+Join Code
+
+Input:
+
+SUNRISE2026
+
+After entering:
+
+"Sunrise Academy found"
+
+Show:
+
+Logo
+Name
+Location
+Category
+
+Button:
+Join Coaching
+
+FLOW B:
+
+Search Coaching
+
+Search:
+Sunrise Academy
+
+Result card:
+
+Sunrise Academy
+Raipur
+Competitive Exam Coaching
+
+Button:
+Request to Join
+
+Status:
+Pending
+
+Coaching owner can:
+
+Approve
+Reject
+Suspend
+Remove
+
+Persist states locally.
+
+==================================================
+17. LIVE TEST MANAGEMENT
+==================================================
+
+Coaching Owner can create live tests.
+
+Fields:
+
+Exam
+Date
+Start Time
+End Time
+Duration
+Price
+Participants
+
+Status:
+
+Scheduled
+Live
+Completed
+Cancelled
+
+Dashboard cards:
+
+Upcoming Live Tests
+Live Now
+Completed
+
+Create live test.
+
+Students should see upcoming tests.
+
+==================================================
+18. PAYMENTS
+==================================================
+
+Create beautiful payment management.
+
+DO NOT integrate real Razorpay.
+
+Create simulated payment service.
+
+Payment table:
+
+Transaction ID
+Student
+Product
+Amount
+Status
+Date
+
+Statuses:
+
+Success
+Pending
+Failed
+Refunded
+
+Revenue cards:
+
+Today
+This Month
+Total
+Pending
+
+Student purchase simulation:
+
+When student clicks:
+
+"Pay ₹499"
+
+Open realistic payment modal.
+
+Options:
+
+UPI
+Card
+Net Banking
+
+These are only UI simulations.
+
+After clicking "Complete Payment":
+
+Show:
+
+Payment Successful
+
+Transaction ID:
+KOPI-TXN-XXXXX
+
+Then unlock exam.
+
+Persist purchase locally.
+
+Clearly architect this as:
+
+paymentService.processMockPayment()
+
+so real Razorpay can replace it later.
+
+==================================================
+19. STUDENT DASHBOARD
+==================================================
+
+Create a beautiful student-first dashboard.
+
+Header:
+
+"Good Morning, Rahul 👋"
+
+Hero card:
+
+Continue Learning
+
+Performance:
+78%
+
+Streak:
+6 Days
+
+Today's Goal:
+20 Questions
+
+Weak Topic:
+Percentage
+
+Available Exams:
+
+SSC CGL Mock Test
+Railway Group D
+Banking Practice
+
+Upcoming:
+
+SSC CGL Grand Test
+Tomorrow, 10:00 AM
+
+AI Recommendation:
+
+"You should practice Percentage today."
+
+Use friendly but premium design.
+
+==================================================
+20. STUDENT EXAMS
+==================================================
+
+Exam marketplace/list.
+
+Each exam card shows:
+
+Exam
+Coaching
+Questions
+Duration
+Rating
+Price
+MRP
+Discount
+Status
+
+Statuses:
+
+PURCHASED
+AVAILABLE
+LOCKED
+UPCOMING
+FREE
+
+Example:
+
+SSC CGL Premium Mock Test
+
+₹999
+₹499
+
+5 free preview questions.
+
+Buttons:
+
+Try Free Preview
+Unlock Full Exam
+Start Exam
+
+==================================================
+21. FREE PREVIEW
+==================================================
+
+Student can attempt first 5 questions.
+
+After 5 questions:
+
+Show:
+
+"You've completed the free preview."
+
+"Unlock the full exam to continue."
+
+Button:
+
+Unlock Full Exam — ₹499
+
+Click opens simulated payment.
+
+After payment:
+
+Exam status becomes PURCHASED.
+
+==================================================
+22. EXAM INTERFACE
+==================================================
+
+This is one of the MOST IMPORTANT screens.
+
+Build a professional exam-taking interface.
+
+Desktop:
+
+Top:
+
+KOPI / Coaching logo
+Exam name
+Question X / 100
+Progress
+Timer
+
+Main:
+
+Question
+
+Options:
+
+A
+B
+C
+D
+
+Bottom:
+
+Previous
+Save & Next
+Mark for Review
+
+Right side:
+
+Question Palette
+
+1 2 3 4 5
+6 7 8 9 10
+...
+
+Status colors:
+
+Answered = green
+Not Attempted = grey
+Review = yellow
+Current = red
+
+Actions:
+
+Answer
+Change Answer
+Bookmark
+Mark for Review
+Navigate
+Submit
+
+Timer must actually count down using React state.
+
+For demo purposes, use configurable mock duration.
+
+When timer reaches zero:
+
+Automatically submit.
+
+Show confirmation before manual submission.
+
+==================================================
+23. PRACTICE QUIZ MODE
+==================================================
+
+Practice mode should be different from timed exam.
+
+No forced timer.
+
+After answering:
+
+Show immediate result:
+
+Correct!
+
+Explanation:
+
+20% of 500 = 100
+New price = ₹600
+
+Show:
+
+Correct Answer
+Explanation
+Topic
+Difficulty
+
+Button:
+
+Next Question
+
+==================================================
+24. RESULT PAGE
+==================================================
+
+After exam submission show a premium results dashboard.
+
+Header:
+
+Test Completed 🎉
+
+Score:
+78 / 100
+
+Cards:
+
+Accuracy
+82%
+
+Correct
+78
+
+Wrong
+17
+
+Skipped
+5
+
+Rank
+124 / 2,540
+
+Charts:
+
+Accuracy
+Speed
+Topic Performance
+Difficulty Performance
+
+Topic analysis:
+
+Quantitative
+82%
+
+Reasoning
+91%
+
+English
+74%
+
+General Awareness
+61%
+
+Weak Topics:
+
+Percentage
+48%
+
+Profit & Loss
+55%
+
+AI recommendation:
+
+"Practice 20 more Percentage questions."
+
+Buttons:
+
+Review Answers
+Download Report
+Practice Weak Topics
+Retake Test
+
+==================================================
+25. RESULT REVIEW
+==================================================
+
+Question-by-question review.
+
+Show:
+
+Question
+Student Answer
+Correct Answer
+Explanation
+Topic
+Difficulty
+
+Correct:
+green
+
+Wrong:
+red
+
+Skipped:
+grey
+
+Allow navigation.
+
+==================================================
+26. RESULT HISTORY
+==================================================
+
+Student can see previous attempts.
+
+Example:
+
+SSC CGL Mock Test #4
+Score: 82
+Rank: 102
+Aug 8
+
+SSC CGL Mock Test #3
+Score: 76
+Rank: 183
+Aug 4
+
+Click opens detailed result.
+
+Include:
+
+Score progression chart
+Accuracy progression
+Topic improvement
+
+Provide:
+
+Download PDF Report
+
+For frontend-only mode, simulate PDF generation with a UI notification or browser print-friendly report.
+
+==================================================
+27. LEADERBOARD
+==================================================
+
+Create:
+
+Overall
+Exam-wise
+Weekly
+Monthly
+
+Leaderboard:
+
+1 Aman 96%
+2 Priya 94%
+3 Rahul 91%
+4 Neha 89%
+
+Highlight logged-in student.
+
+Show:
+
+Your Rank
+Previous Rank
+Rank Change
+
+==================================================
+28. AI CHATBOT
+==================================================
+
+Create a premium AI chat interface.
+
+Title:
+
+"KOPI AI"
+
+Subtitle:
+
+"Your personal study assistant"
+
+Example conversation:
+
+Student:
+"Percentage ka shortcut batao."
+
+AI:
+"Percentage questions ko quickly solve karne ke liye..."
+
+Student:
+"Mujhe is question ka solution samjhao."
+
+AI:
+"Let's solve it step by step..."
+
+Build actual interactive frontend behavior.
+
+Use mock AI service.
+
+Create multiple contextual responses based on keywords.
+
+Examples:
+
+percentage
+profit loss
+reasoning
+english
+question explanation
+study plan
+
+Typing animation.
+
+Message history.
+
+Suggested prompts.
+
+"Explain this question"
+
+"Give me a shortcut"
+
+"Create 5 practice questions"
+
+"Why was my answer wrong?"
+
+Do NOT call a real AI API.
+
+==================================================
+29. AI PERFORMANCE INSIGHTS
+==================================================
+
+Student AI insights page.
+
+Show:
+
+Tests Attempted
+20
+
+Average Score
+71%
+
+Average Time
+42 sec/question
+
+Strong Topics:
+
+Reasoning
+English
+
+Weak Topics:
+
+Percentage
+Profit & Loss
+
+AI Insight:
+
+"Rahul performs strongly in Reasoning but is consistently underperforming in Quantitative Aptitude."
+
+Include:
+
+Improvement chart
+Topic heatmap
+Recommended actions
+
+==================================================
+30. AI WEAK TOPIC DETECTION
+==================================================
+
+Build a weak topic dashboard.
+
+Example:
+
+Percentage
+
+Attempts:
+80
+
+Correct:
+38
+
+Accuracy:
+47.5%
+
+Status:
+WEAK TOPIC
+
+Recommendation:
+
+Practice Percentage
+↓
+20 Questions
+↓
+Easy
+↓
+Medium
+↓
+Mock Test
+
+Make this visually intuitive.
+
+==================================================
+31. PERSONALIZED STUDY PLAN
+==================================================
+
+Create AI Study Plan page.
+
+Title:
+
+"Rahul's 7-Day Study Plan"
+
+Monday:
+Percentage
+20 Questions
+
+Tuesday:
+Profit & Loss
+20 Questions
+
+Wednesday:
+Reasoning
+30 Questions
+
+Thursday:
+Percentage Revision
+
+Friday:
+Full Mock Test
+
+Saturday:
+Weak Topic Practice
+
+Sunday:
+Revision + Analysis
+
+Each task should have:
+
+Checkbox
+Progress
+Start button
+
+Allow marking tasks complete.
+
+Show:
+
+Plan completion:
+57%
+
+==================================================
+32. COACHING ANALYTICS
+==================================================
+
+Build two analytics sections.
+
+BUSINESS:
+
+Revenue
+Students
+Purchases
+Popular Exams
+Conversion
+Growth
+
+ACADEMIC:
+
+Average Score
+Completion Rate
+Weak Topics
+Top Students
+Difficult Questions
+Exam Performance
+
+Use:
+
+Line charts
+Bar charts
+Area charts
+Donut charts
+Progress bars
+Tables
+
+Use realistic mock data.
+
+Include filters:
+
+7 days
+30 days
+90 days
+This year
+
+==================================================
+33. PLATFORM ANALYTICS
+==================================================
+
+Platform Owner analytics.
+
+Show:
+
+Active Coachings
+Students
+MRR
+ARR
+Revenue
+AI Usage
+Exam Purchases
+
+Charts:
+
+Revenue Growth
+Coaching Growth
+Student Growth
+AI Usage
+Exam Purchases
+
+Add date range selector.
+
+==================================================
+34. NOTIFICATION SYSTEM
+==================================================
+
+Create notification center.
+
+Role-based notifications.
+
+STUDENT:
+
+Payment successful
+Exam unlocked
+Live test reminder
+Result published
+AI study plan ready
+
+COACHING:
+
+New student request
+Payment received
+Question bank ready
+Live test reminder
+Support response
+
+PLATFORM OWNER:
+
+New coaching signup
+New question request
+Payment
+Support ticket
+System alert
+
+Notifications should be interactive.
+
+Unread count.
+
+Mark as read.
+
+Mark all read.
+
+Persist locally.
+
+==================================================
+35. SUPPORT SYSTEM
+==================================================
+
+Build Help Center.
+
+Sections:
+
+FAQ
+Help Center
+Raise Ticket
+Chat
+WhatsApp
+Call Request
+
+Ticket page.
+
+Example:
+
+Ticket #10234
+
+Issue:
+"Payment successful but exam locked."
+
+Status:
+
+Open
+In Progress
+Resolved
+
+Create ticket modal.
+
+Allow user to submit:
+
+Category
+Subject
+Description
+Priority
+
+Create mock ticket.
+
+==================================================
+36. COACHING BRANDING / WHITE LABEL
+==================================================
+
+This is extremely important.
+
+Create Branding Settings.
+
+Fields:
+
+Institute Name
+Logo
+Primary Color
+Secondary Color
+Favicon
+Support Phone
+Support Email
+
+Show live preview.
+
+When branding is changed:
+
+Student portal should visually update.
+
+For example:
+
+Sunrise Academy
+blue branding
+
+Student sees:
+
+Sunrise Academy
+
+NOT:
+
+KOPI
+
+The platform owner still sees KOPI branding.
+
+This demonstrates white-label architecture.
+
+Use a TenantContext.
+
+Example:
+
+TenantContext:
+tenantId
+tenantName
+logo
+primaryColor
+secondaryColor
+
+==================================================
+37. MULTI-TENANCY DEMO
+==================================================
+
+Create a tenant switcher ONLY for demo/platform-owner development.
+
+Tenants:
+
+Sunrise Academy
+Career Point
+Success Institute
+
+Switching tenant must update:
+
+Brand
+Logo
+Students
+Exams
+Payments
+Analytics
+Notifications
+
+NEVER mix tenant data.
+
+Create mock tenant-specific datasets.
+
+This is frontend simulation of multi-tenancy.
+
+Architecture should make it obvious where backend tenant isolation will eventually happen.
+
+==================================================
+38. SETTINGS
+==================================================
+
+Create settings pages.
+
+Account
+Security
+Notifications
+Branding
+AI Settings
+Payment Settings
+Support
+
+AI settings:
+
+Provider:
+
+OpenAI
+Gemini
+Claude
+
+Monthly limit
+
+Pricing
+
+Free usage
+
+For now these are UI settings only.
+
+==================================================
+39. GLOBAL SEARCH
+==================================================
+
+Build command/search interface.
+
+Search:
+
+Students
+Exams
+Questions
+Payments
+Coachings
+Tickets
+
+Keyboard shortcut:
+
+Ctrl + K
+
+Show search modal.
+
+==================================================
+40. EMPTY STATES
+==================================================
+
+Every major page must have polished empty states.
+
+Examples:
+
+No exams yet.
+
+"No exams have been created yet."
+
+Button:
+Create Exam
+
+No students.
+
+"Your coaching doesn't have any students yet."
+
+Button:
+Invite Students
+
+No payments.
+
+"No transactions found."
+
+No notifications.
+
+"You're all caught up."
+
+==================================================
+41. LOADING STATES
+==================================================
+
+Use skeleton loaders.
+
+Do not simply show "Loading..."
+
+Create skeletons for:
+
+Tables
+Cards
+Charts
+Dashboard
+Exam pages
+
+==================================================
+42. ERROR STATES
+==================================================
+
+Create reusable error UI.
+
+Example:
+
+"Something went wrong."
+
+"Try again"
+
+Use toast notifications.
+
+==================================================
+43. TOAST SYSTEM
+==================================================
+
+Create global toast notifications.
+
+Examples:
+
+Exam published successfully.
+
+Student approved successfully.
+
+Payment successful.
+
+Question bank uploaded.
+
+Live test scheduled.
+
+Settings saved.
+
+Ticket created.
+
+==================================================
+44. MODALS / DRAWERS
+==================================================
+
+Use reusable modal and drawer components.
+
+Avoid browser alert().
+
+Use proper confirmation dialogs.
+
+Examples:
+
+Delete exam?
+Suspend student?
+Publish exam?
+Submit test?
+Logout?
+
+==================================================
+45. RESPONSIVE DESIGN
+==================================================
+
+MUST work beautifully on:
+
+Desktop
+Laptop
+Tablet
+Mobile
+
+Breakpoints:
+
+Mobile
+Tablet
+Desktop
+Large Desktop
+
+Student exam interface should be optimized separately for mobile.
+
+Coaching dashboard should remain usable on mobile.
+
+==================================================
+46. ACCESSIBILITY
+==================================================
+
+Use:
+
+Semantic HTML
+Keyboard navigation
+ARIA labels where needed
+Visible focus states
+Readable contrast
+Accessible buttons
+Form labels
+
+==================================================
+47. MICRO-INTERACTIONS
+==================================================
+
+Add subtle animations:
+
+Card hover
+Button press
+Page transitions
+Modal transitions
+Toast animation
+Progress animation
+Chart animation
+Question transition
+
+Do NOT over-animate.
+
+==================================================
+48. DEMO DATA
+==================================================
+
+Seed realistic Indian coaching data.
+
+Coachings:
+
+Sunrise Academy
+Career Point
+Success Institute
+
+Students:
+
+Rahul Sharma
+Aman Verma
+Priya Singh
+Neha Jain
+Rohit Kumar
+Anjali Gupta
+
+Exams:
+
+SSC CGL Mock Test
+SSC CGL Practice Set
+Railway Group D
+Banking Mock Test
+UPSC CSAT Practice
+SSC CGL Grand Mock
+
+Subjects:
+
+Quantitative Aptitude
+Reasoning
+English
+General Awareness
+
+Question topics:
+
+Percentage
+Profit & Loss
+Time & Work
+Ratio
+Number System
+Coding-Decoding
+Analogy
+Grammar
+Vocabulary
+Current Affairs
+
+==================================================
+49. LOCAL STORAGE
+==================================================
+
+Persist:
+
+authentication
+current role
+current tenant
+students
+coachings
+exams
+questions
+question banks
+purchases
+payments
+notifications
+support tickets
+study plan
+quiz attempts
+branding
+settings
+
+Create utility:
+
+storageService
+
+Methods:
+
+get()
+set()
+remove()
+clear()
+
+Do not directly access localStorage everywhere.
+
+==================================================
+50. MOCK SERVICES
+==================================================
+
+Implement service interfaces.
+
+Example:
+
+examService:
+
+getExams()
+getExam(id)
+createExam(data)
+updateExam(id,data)
+deleteExam(id)
+publishExam(id)
+
+studentService:
+
+getStudents()
+getStudent(id)
+approveStudent(id)
+suspendStudent(id)
+removeStudent(id)
+
+paymentService:
+
+getTransactions()
+processMockPayment(data)
+
+analyticsService:
+
+getDashboardAnalytics()
+getStudentAnalytics()
+getPlatformAnalytics()
+
+notificationService:
+
+getNotifications()
+markAsRead(id)
+markAllAsRead()
+
+aiService:
+
+sendMessage(message,context)
+getInsights(studentId)
+generateStudyPlan(studentId)
+
+supportService:
+
+getTickets()
+createTicket(data)
+updateTicket(id,status)
+
+Do not couple pages directly to mock arrays.
+
+==================================================
+51. ROUTING
+==================================================
+
+Create proper routes.
+
+PUBLIC:
+
+/
+/login
+
+PLATFORM OWNER:
+
+/platform/dashboard
+/platform/coachings
+/platform/coachings/:id
+/platform/question-requests
+/platform/question-banks
+/platform/exams
+/platform/students
+/platform/payments
+/platform/analytics
+/platform/ai-usage
+/platform/support
+/platform/notifications
+/platform/settings
+
+COACHING:
+
+/coaching/dashboard
+/coaching/exams
+/coaching/exams/create
+/coaching/exams/:id
+/coaching/live-tests
+/coaching/students
+/coaching/students/:id
+/coaching/question-banks
+/coaching/payments
+/coaching/analytics
+/coaching/ai
+/coaching/notifications
+/coaching/support
+/coaching/branding
+/coaching/settings
+
+STUDENT:
+
+/student/dashboard
+/student/exams
+/student/exams/:id
+/student/exams/:id/preview
+/student/exams/:id/attempt
+/student/results
+/student/results/:id
+/student/leaderboard
+/student/study-plan
+/student/ai
+/student/performance
+/student/notifications
+/student/support
+/student/profile
+
+==================================================
+52. ROUTE GUARDS
+==================================================
+
+Create role-based protected routes.
+
+Platform Owner cannot access coaching/student pages.
+
+Coaching Owner cannot access platform owner pages.
+
+Student cannot access admin pages.
+
+For demo, show:
+
+403 / Unauthorized
+
+if user manually enters a forbidden route.
+
+==================================================
+53. DASHBOARD UX
+==================================================
+
+Do not make every page look like a generic CRUD dashboard.
+
+Use:
+
+- Contextual cards
+- Data visualization
+- Activity feeds
+- Quick actions
+- Smart recommendations
+- Empty states
+- Progressive disclosure
+
+Important actions should always be visually obvious.
+
+==================================================
+54. STUDENT UX
+==================================================
+
+Student interface should feel different from admin interface.
+
+It should feel:
+
+Focused
+Motivating
+Fast
+Friendly
+Learning-oriented
+
+Use:
+
+Progress
+Streaks
+Goals
+Achievements
+Recommendations
+Performance
+
+Avoid overwhelming students with admin tables.
+
+==================================================
+55. COACHING UX
+==================================================
+
+Coaching Owner interface should feel like a business operating system.
+
+Prioritize:
+
+Revenue
+Students
+Exams
+Live Tests
+Performance
+Quick actions
+
+==================================================
+56. PLATFORM OWNER UX
+==================================================
+
+Platform Owner interface should feel like SaaS command center.
+
+Prioritize:
+
+MRR
+ARR
+Coachings
+Platform revenue
+Question requests
+Support
+AI usage
+System health
+
+==================================================
+57. LANDING PAGE
+==================================================
+
+Create a polished KOPI landing page too.
+
+Hero:
+
+KOPI
+
+"Your Coaching.
+Your Brand.
+Your Learning OS."
+
+Subheading:
+
+"Launch and operate your own branded examination ecosystem without building the technology from scratch."
+
+CTA:
+
+"Start Building"
+
+Secondary:
+
+"View Demo"
+
+Sections:
+
+Trusted by modern coaching institutes
+
+Everything your coaching needs:
+
+White-label
+Exams
+Students
+Live Tests
+Payments
+AI
+Analytics
+
+How it works:
+
+1.
+Create your coaching workspace.
+
+2.
+Add your brand.
+
+3.
+Get your question banks.
+
+4.
+Launch exams.
+
+5.
+Students practice and compete.
+
+6.
+AI analyzes performance.
+
+7.
+Your coaching grows.
+
+Pricing section:
+
+Starter
+Growth
+Enterprise
+
+FAQ.
+
+Footer.
+
+==================================================
+58. LANDING PAGE DESIGN
+==================================================
+
+Hero should NOT look like a template.
+
+Use a premium product mockup showing:
+
+KOPI dashboard
+
+Student performance
+
+Exam cards
+
+Revenue chart
+
+AI insight
+
+Use subtle gradient background.
+
+Create floating UI cards around the hero product preview.
+
+==================================================
+59. BRAND LOGO
+==================================================
+
+Create a simple text + icon logo for KOPI.
+
+Concept:
+
+A stylized notebook/page combined with a subtle checkmark or exam tick.
+
+Logo must work in:
+
+Full logo
+Icon only
+Dark background
+Light background
+
+Do not use external image assets.
+
+Use CSS/SVG where possible.
+
+==================================================
+60. PERFORMANCE
+==================================================
+
+Optimize the frontend.
+
+Avoid unnecessary rerenders.
+
+Use lazy loading for major route pages.
+
+Use reusable components.
+
+Do not load massive libraries unnecessarily.
+
+==================================================
+61. IMPORTANT FRONTEND-ONLY RULE
+==================================================
+
+The product must LOOK and FEEL fully functional.
+
+But NEVER pretend that real backend functionality exists.
+
+For example:
+
+Payment:
+Use simulated payment.
+
+AI:
+Use mock AI responses.
+
+Authentication:
+Use local demo authentication.
+
+Database:
+Use localStorage.
+
+API:
+Use mock services.
+
+This is intentional because the backend will be connected later.
+
+==================================================
+62. BACKEND-READY ARCHITECTURE
+==================================================
+
+VERY IMPORTANT.
+
+Do NOT write:
+
+component -> localStorage directly
+
+Instead:
+
+component
+   ↓
+service
+   ↓
+mock repository
+   ↓
+localStorage
+
+Later:
+
+component
+   ↓
+service
+   ↓
+API repository
+   ↓
+real backend
+
+The UI must not need rewriting when backend is added.
+
+==================================================
+63. FINAL QUALITY BAR
+==================================================
+
+This must NOT look like:
+
+- A beginner React project
+- A generic dashboard template
+- A CRUD admin panel
+- A basic Tailwind demo
+
+It should look like a real startup product that could be shown to:
+
+- Coaching owners
+- Investors
+- Customers
+- Product teams
+
+The application should feel polished enough for a real SaaS demo.
+
+==================================================
+64. FINAL CHECKLIST
+==================================================
+
+Before finishing, verify:
+
+[ ] Landing page works
+[ ] Login works
+[ ] Demo role login works
+[ ] Platform Owner dashboard works
+[ ] Coaching Owner dashboard works
+[ ] Student dashboard works
+[ ] Role-based navigation works
+[ ] Tenant switching works
+[ ] Branding changes work
+[ ] Coaching creation works
+[ ] Student onboarding works
+[ ] Join code works
+[ ] Search coaching works
+[ ] Student approval works
+[ ] Question bank request works
+[ ] Question bank management works
+[ ] Exam creation wizard works
+[ ] Exam publishing works
+[ ] Exam preview works
+[ ] Paid exam simulation works
+[ ] Purchase unlock works
+[ ] Practice quiz works
+[ ] Timed exam works
+[ ] Question palette works
+[ ] Mark for review works
+[ ] Auto-submit works
+[ ] Result generation works
+[ ] Result review works
+[ ] Result history works
+[ ] Leaderboard works
+[ ] Live test management works
+[ ] Payments page works
+[ ] Analytics charts work
+[ ] AI chatbot works with mock responses
+[ ] AI insights work
+[ ] Weak topic detection works
+[ ] Study plan works
+[ ] Notifications work
+[ ] Support tickets work
+[ ] Settings work
+[ ] Responsive design works
+[ ] localStorage persistence works
+[ ] Loading states exist
+[ ] Empty states exist
+[ ] Error states exist
+[ ] Toast notifications exist
+[ ] No browser alerts
+[ ] No console errors
+[ ] No broken routes
+[ ] No placeholder lorem ipsum
+[ ] No dead buttons
+[ ] No fake backend calls
+[ ] No unnecessary dependencies
+
+==================================================
+65. SEED DATA + DEMO EXPERIENCE
+==================================================
+
+The application should be immediately usable after startup.
+
+Do NOT require the user to manually create data before seeing the product.
+
+The demo should already contain:
+
+3 coachings
+50+ students
+10+ exams
+100+ questions
+multiple payments
+multiple live tests
+multiple notifications
+multiple support tickets
+analytics data
+student attempts
+leaderboard data
+AI insights
+study plan
+
+When the user logs in:
+
+Platform Owner:
+show full SaaS ecosystem.
+
+Coaching Owner:
+show Sunrise Academy.
+
+Student:
+show Rahul's complete learning experience.
+
+==================================================
+66. MOST IMPORTANT PRODUCT FLOW
+==================================================
+
+Make this complete demo flow work:
+
+Platform Owner:
+
+Create Sunrise Academy
+↓
+Generate Join Code
+↓
+Coaching Owner logs in
+↓
+Branding configured
+↓
+Request Question Bank
+↓
+Platform Owner approves request
+↓
+Question Bank becomes Ready
+↓
+Coaching Owner creates exam
+↓
+Sets MRP ₹999
+↓
+Sale Price ₹499
+↓
+Publishes exam
+↓
+Student joins using SUNRISE2026
+↓
+Student sees exam
+↓
+Student tries 5-question preview
+↓
+Student clicks Unlock
+↓
+Simulated payment
+↓
+Exam unlocks
+↓
+Student attempts exam
+↓
+Timer runs
+↓
+Student submits
+↓
+Result generated
+↓
+Performance analyzed
+↓
+Weak topic detected
+↓
+AI recommendation generated
+↓
+Personalized study plan shown
+↓
+Student improves
+↓
+Coaching analytics update
+
+This entire experience should be demonstrable from the UI.
+
+==================================================
+67. FINAL INSTRUCTION
+==================================================
+
+Build the application now.
+
+Do not stop at creating a UI mockup.
+
+Implement all interactions using frontend state and mock services.
+
+Every major button should perform an action.
+
+Every major page should contain realistic content.
+
+Every important workflow should be connected.
+
+Make the app feel like a real product.
+
+Do not ask me unnecessary questions.
+
+Make reasonable product/design decisions yourself.
+
+Prioritize:
+
+1. UX
+2. Functional flows
+3. Visual polish
+4. Component architecture
+5. Backend readiness
+6. Responsive design
+
+The final result should be a complete, polished, interactive frontend prototype of:
+
+KOPI
+
+"Your Coaching. Your Brand. Your Learning OS."
