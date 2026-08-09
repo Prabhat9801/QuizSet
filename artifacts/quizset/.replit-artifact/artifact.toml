@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "QuizSet"
+description = "A premium white-label examination and learning operating system for coaching institutes, with role-based workspaces for platform owners, coaching owners, and students."
+version = "1.0.0"
+id = "artifacts/quizset"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20532
+
+[services.development]
+run = "pnpm --filter @workspace/quizset run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/quizset", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/quizset/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20532"
+BASE_PATH = "/"

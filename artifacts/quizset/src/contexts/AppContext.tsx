@@ -1,0 +1,10 @@
+import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { authService } from '@/services/mock';
+import { AuthUser, Role, Tenant, Toast } from '@/types';
+import { storage } from '@/services/storage';
+import { tenants } from '@/data/seed';
+type Ctx = { user: AuthUser|null; tenant: Tenant; tenantId: string; toast: (title:string, description?:string, tone?:Toast['tone'])=>void; toasts: Toast[]; dismissToast:(id:number)=>void; login:(u:AuthUser)=>void; logout:()=>void; switchTenant:(id:string)=>void; };
+const AppCtx=createContext<Ctx|null>(null);
+export function AppProvider({children}:{children:ReactNode}) { const [user,setUser]=useState<AuthUser|null>(authService.current()); const [tenantId,setTenantId]=useState(storage.get('tenantId','sunrise')); const [toasts,setToasts]=useState<Toast[]>([]); const tenant=useMemo(()=>tenants.find(t=>t.id===tenantId)||tenants[0],[tenantId]); const toast=(title:string,description?:string,tone:Toast['tone']='success')=>{ const id=Date.now(); setToasts(x=>[...x,{id,title,description,tone}]); setTimeout(()=>setToasts(x=>x.filter(t=>t.id!==id)),3600); }; const login=(u:AuthUser)=>{storage.set('auth',u);setUser(u)}; const logout=()=>{authService.logout();setUser(null)}; const switchTenant=(id:string)=>{setTenantId(id);storage.set('tenantId',id)}; return <AppCtx.Provider value={{user,tenant,tenantId,toast,toasts,dismissToast:id=>setToasts(x=>x.filter(t=>t.id!==id)),login,logout,switchTenant}}>{children}<div className="toast-stack">{toasts.map(t=><button data-testid={`toast-${t.id}`} key={t.id} onClick={()=>setToasts(x=>x.filter(a=>a.id!==t.id))} className={`toast toast-${t.tone||'success'}`}><strong>{t.title}</strong><span>{t.description}</span></button>)}</div></AppCtx.Provider> }
+export const useApp=()=>{const c=useContext(AppCtx);if(!c)throw new Error('AppProvider missing');return c};
+export const roleHome=(role:Role)=>role==='platform'?'/platform/dashboard':role==='coaching'?'/coaching/dashboard':'/student/dashboard';
