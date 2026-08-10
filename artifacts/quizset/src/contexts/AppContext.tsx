@@ -129,6 +129,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         if (authUser) {
           hasRealSession.current = true;
+          // A real, resolved Supabase session always wins over whatever
+          // `user` already is — including a stale mock/demo session left in
+          // localStorage from earlier testing (e.g. the seeded "sunrise"
+          // tenant). Without this, a real login could still render pages
+          // against the leftover mock tenantId until this effect resolves,
+          // and every API call in flight before that would 400 with a
+          // non-UUID tenantId. Clearing the mock `auth` key too, so a reload
+          // can't reintroduce the same stale state.
+          storage.remove('auth');
           setUser(authUser);
         }
         // A real session with no matching profile row (see the signup gap
