@@ -2,20 +2,17 @@ import { useEffect, useState } from 'react';
 import { Save, Send, Sparkles } from 'lucide-react';
 import { Alert, Badge, Button, Card, Field, PageHeader, Tabs } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { aiService } from '@/services/mock';
-import { chatbotConfigService, paymentService } from '@/services/api';
-import { storage } from '@/services/storage';
+import { chatbotConfigService, chatbotUsageService, paymentService, ApiError } from '@/services/api';
 import { ChatbotConfig } from '@/types';
 import { formatRupees } from '@/lib/format';
 
 type Msg = { from: 'ai' | 'user'; text: string };
 
-function usageKey(tenantId: string, studentId: string) {
-  return `chatUsage:${tenantId}:${studentId}`;
-}
-
-/** The actual chat UI — used by both the student page and the coaching's own preview in Settings. */
-function ChatPanel({ suggestions, onSend }: { suggestions: string[]; onSend?: () => void }) {
+/** The actual chat UI — used by both the student page and the coaching's own
+ * preview in Settings. Talks to the real `POST /api/chatbot/chat` endpoint —
+ * the server enforces limits/config and persists history, so this component
+ * only needs to reflect `usage` back from each reply, not track it itself. */
+function ChatPanel({ suggestions, onUsage }: { suggestions: string[]; onUsage?: (used: number) => void }) {
   const [messages, setMessages] = useState<Msg[]>([{ from: 'ai', text: "Hi! I'm here to help you choose your next best study move. Ask me about a weak topic, your plan, or an exam strategy." }]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,11 +22,17 @@ function ChatPanel({ suggestions, onSend }: { suggestions: string[]; onSend?: ()
     if (!current) return;
     setText('');
     setMessages((x) => [...x, { from: 'user', text: current }]);
-    onSend?.();
     setLoading(true);
-    const answer = await aiService.reply(current);
-    setLoading(false);
-    setMessages((x) => [...x, { from: 'ai', text: answer }]);
+    try {
+      const { reply, usage } = await chatbotConfigService.chat(current);
+      setMessages((x) => [...x, { from: 'ai', text: reply }]);
+      onUsage?.(usage.used);
+    } catch (err) {
+      const message = err instanceof ApiError ? (err.data as { error?: string })?.error ?? err.message : 'Kuch galat ho gaya, dobara koshish karein.';
+      setMessages((x) => [...x, { from: 'ai', text: message }]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -89,7 +92,7 @@ export function StudentAI() {
   useEffect(() => {
     if (!tenantId || !user) return;
     chatbotConfigService.get(tenantId).then(setConfig);
-    setUsage(storage.get(usageKey(tenantId, user.id), 0));
+    chatbotUsageService.get(tenantId, user.id).then((u) => setUsage(u.messageCount));
     setUnlocked(paymentService.hasPurchased(user.id, 'chatbot', tenantId));
   }, [tenantId, user]);
 
@@ -133,16 +136,7 @@ export function StudentAI() {
           </Button>
         </Card>
       ) : (
-        <ChatPanel
-          suggestions={SUGGESTIONS}
-          onSend={() =>
-            setUsage((u) => {
-              const next = u + 1;
-              storage.set(usageKey(tenantId, user.id), next);
-              return next;
-            })
-          }
-        />
+        <ChatPanel suggestions={SUGGESTIONS} onUsage={setUsage} />
       )}
     </>
   );

@@ -1,10 +1,10 @@
 import { Router, type IRouter, type Request } from "express";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { chatbotConfigs, chatbotMessages, chatbotUsage, chatbotProviderEnum, chatMessageRoleEnum } from "@workspace/db/schema";
 import { authenticate } from "../middlewares/auth";
-import { canAccessTenant, requireRole } from "../middlewares/authorize";
-import { badRequest, forbidden } from "../lib/http-error";
+import { requireRole, canAccessTenant } from "../middlewares/authorize";
+import { badRequest, forbidden, HttpError } from "../lib/http-error";
 import { optionalInt, optionalOneOf, requireInt, requireOneOf, requireString, requireUuid } from "../lib/validate";
 
 const router: IRouter = Router();
@@ -190,6 +190,140 @@ router.post("/chatbot/messages", authenticate, requireRole("student"), async (re
     })
     .returning();
   res.status(201).json(row);
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/chatbot/chat — the actual AI call. Student sends just a message;
+// everything else (config lookup, usage limits, history, persisting both
+// sides of the exchange, incrementing the counter) happens server-side in
+// one request, mirroring quiz-ITI's chatbot-backend/main.py `/chat` route
+// but folded into this same Express app instead of a separate Python
+// service — QuizSet has no other Python deployable, so a second stack for
+// one endpoint isn't worth the extra moving part.
+//
+// The LLM key is a single platform-wide `OPENAI_API_KEY` env var, not a
+// per-tenant column (unlike the quiz-ITI original, whose `chatbot_configs`
+// has its own `api_key`) — this schema's `chatbotConfigs` has no such
+// column, and splitting per-coaching billing/keys is out of scope for this
+// pass. A coaching's own config still controls enabled/pricing/limits/prompt.
+const MAX_MESSAGE_CHARS = 2000;
+const HISTORY_LIMIT = 10;
+const OPENAI_MODEL = "gpt-4o-mini";
+
+async function callOpenAI(system: string, history: { role: string; content: string }[]): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new HttpError(503, "AI assistant is not configured on the server yet (missing OPENAI_API_KEY).");
+  }
+  let res: globalThis.Response;
+  try {
+    res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: OPENAI_MODEL,
+        messages: [{ role: "system", content: system }, ...history],
+      }),
+    });
+  } catch {
+    throw new HttpError(502, "Could not reach OpenAI.");
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    console.error(`OpenAI error ${res.status}: ${text.slice(0, 500)}`);
+    throw new HttpError(502, "AI se jawab nahi mil paya. Thodi der baad dobara koshish karein.");
+  }
+  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  return data.choices?.[0]?.message?.content ?? "";
+}
+
+router.post("/chatbot/chat", authenticate, requireRole("student"), async (req, res) => {
+  const auth = req.auth!;
+  const tenantId = auth.tenantId;
+  if (!tenantId) throw badRequest("No coaching linked to this account.");
+
+  const body = req.body as Record<string, unknown>;
+  const message = requireString(body.message, "message").trim();
+  if (!message) throw badRequest("message is required.");
+  if (message.length > MAX_MESSAGE_CHARS) throw badRequest(`message must be at most ${MAX_MESSAGE_CHARS} characters.`);
+
+  const [config] = await db.select().from(chatbotConfigs).where(eq(chatbotConfigs.tenantId, tenantId)).limit(1);
+  if (!config || !config.enabled) {
+    throw forbidden("Chatbot aapki coaching ne enable nahi kiya hai.");
+  }
+
+  // -------------------------------------------------------------- usage gate
+  const periodMonth = new Date().toISOString().slice(0, 7); // 'YYYY-MM', matches chatbot.ts's other routes' convention
+  const studentProfileId = auth.userId;
+
+  const usageRow = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(chatbotUsage)
+      .where(and(eq(chatbotUsage.studentProfileId, studentProfileId), eq(chatbotUsage.periodMonth, periodMonth)))
+      .limit(1);
+    return existing ?? { id: null as string | null, messageCount: 0, isPaid: false };
+  });
+  const used = usageRow.messageCount;
+  const isPaid = usageRow.isPaid;
+
+  if (used >= config.monthlyMessageCap) {
+    throw new HttpError(429, `Is mahine ki limit (${config.monthlyMessageCap} messages) khatam ho gayi.`);
+  }
+  if (!isPaid && config.priceRupeesPerMonth > 0 && used >= config.freeMessageLimit) {
+    throw new HttpError(402, `Free limit (${config.freeMessageLimit} messages) khatam. Aage chat karne ke liye payment karein.`);
+  }
+
+  // ------------------------------------------------------------------- reply
+  const historyRows = await db
+    .select({ role: chatbotMessages.role, content: chatbotMessages.content })
+    .from(chatbotMessages)
+    .where(eq(chatbotMessages.studentProfileId, studentProfileId))
+    .orderBy(desc(chatbotMessages.createdAt))
+    .limit(HISTORY_LIMIT);
+  const history = historyRows.reverse().map((m) => ({ role: m.role, content: m.content }));
+  history.push({ role: "user", content: message });
+
+  const systemPrompt =
+    (config.systemPrompt || "").trim() ||
+    "Aap ek helpful exam-preparation tutor hain. Students ke doubts saral bhasha me clear karein. " +
+      "Jawab Hindi (Devanagari) me dein, lekin technical terms English me hi rakhein. " +
+      "Sirf padhai/exam se related sawaalon ka jawab dein.";
+
+  const reply = await callOpenAI(systemPrompt, history);
+  if (!reply) throw new HttpError(502, "AI se khaali jawab aaya, dobara koshish karein.");
+
+  // ------------------------------------------------------------ persist both
+  await db.insert(chatbotMessages).values([
+    { studentProfileId, tenantId, role: "user", content: message },
+    { studentProfileId, tenantId, role: "assistant", content: reply },
+  ]);
+
+  const updatedUsage = await db.transaction(async (tx) => {
+    if (usageRow.id) {
+      const [updated] = await tx
+        .update(chatbotUsage)
+        .set({ messageCount: used + 1 })
+        .where(eq(chatbotUsage.id, usageRow.id))
+        .returning();
+      return updated;
+    }
+    const [created] = await tx
+      .insert(chatbotUsage)
+      .values({ studentProfileId, tenantId, periodMonth, messageCount: 1, isPaid: false })
+      .returning();
+    return created;
+  });
+
+  res.json({
+    reply,
+    usage: {
+      used: updatedUsage.messageCount,
+      freeLimit: config.freeMessageLimit,
+      cap: config.monthlyMessageCap,
+      isPaid: updatedUsage.isPaid,
+    },
+  });
 });
 
 export default router;

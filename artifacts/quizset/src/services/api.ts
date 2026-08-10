@@ -31,16 +31,11 @@
  *   tenantService, courseService (+ CourseWithCount), questionBankService,
  *   questionBankRequestService, questionService, studentService,
  *   liveTestService, attemptService (+ computeTopicBreakdown/TopicBreakdown),
- *   paymentService, chatbotConfigService, joinRequestService,
- *   certificateService, testimonialService, studyPlanService.
+ *   paymentService, chatbotConfigService, chatbotUsageService,
+ *   joinRequestService, certificateService, testimonialService, studyPlanService.
  *
  * Intentionally NOT implemented here, each for a specific reason:
  *   - authService        — out of scope, see the auth seam note above.
- *   - aiService           — mock.ts's `aiService.reply()` is a canned
- *     keyword-matcher standing in for an LLM call. The given route plan has
- *     no chat-completion endpoint (chatbot_messages/_usage are a log/quota
- *     store, not a reply generator) — that capability likely lives in a
- *     separate LLM-proxy service not covered by this route plan at all.
  *   - notificationService — the given route plan defines no notifications
  *     endpoints whatsoever. Guessing a shape against zero information would
  *     be worse than leaving it out; this needs a real route plan first.
@@ -99,7 +94,7 @@ export { studentService } from './api/students';
 export { liveTestService } from './api/liveTests';
 export { attemptService, computeTopicBreakdown, type TopicBreakdown } from './api/attempts';
 export { paymentService } from './api/payments';
-export { chatbotConfigService } from './api/chatbot';
+export { chatbotConfigService, chatbotUsageService } from './api/chatbot';
 export { joinRequestService } from './api/joinRequests';
 export { certificateService } from './api/certificates';
 export { testimonialService } from './api/testimonials';

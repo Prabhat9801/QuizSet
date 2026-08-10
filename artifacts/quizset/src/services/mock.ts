@@ -663,20 +663,6 @@ export const chatbotConfigService = {
   },
 };
 
-export const aiService = {
-  async reply(message: string): Promise<string> {
-    await wait(850);
-    const text = message.toLowerCase();
-    if (text.includes('percentage')) return 'Percentage is a great topic to sharpen. Start with 10 medium-difficulty questions, then review the ones you got wrong step by step.';
-    if (text.includes('profit') || text.includes('loss')) return 'For Profit & Loss, always convert everything to a common cost-price base of 100 first — it makes percentage changes much easier to track.';
-    if (text.includes('reasoning') || text.includes('coding')) return 'For coding-decoding questions, write out the alphabet with position numbers next to it — most patterns become obvious once you can see the shift visually.';
-    if (text.includes('english') || text.includes('vocabulary') || text.includes('grammar')) return 'Reading a little bit of varied English content daily — news, short stories — builds vocabulary faster than memorising word lists alone.';
-    if (text.includes('shortcut')) return 'A quick shortcut: for successive percentage changes of a% and b%, the net change is a + b + (a×b)/100. Try it on your next Percentage question.';
-    if (text.includes('plan') || text.includes('study')) return "A focused 45-minute daily session — 20 minutes on your weakest topic, 25 minutes on a timed mini mock — tends to move scores faster than long unfocused sessions.";
-    return "I can help you with a weak topic, an exam strategy, or explaining a question. Try asking about Percentage, Time & Work, or 'give me a shortcut'.";
-  },
-};
-
 // -------------------------------------------------------------- certificates
 export const certificateService = {
   /**

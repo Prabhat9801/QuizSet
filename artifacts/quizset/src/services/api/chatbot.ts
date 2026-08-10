@@ -1,5 +1,10 @@
 import type { ChatbotConfig } from '@/types';
-import { apiGet, apiPut } from './http';
+import { apiGet, apiPost, apiPut } from './http';
+
+export type ChatReply = {
+  reply: string;
+  usage: { used: number; freeLimit: number; cap: number; isPaid: boolean };
+};
 
 // `chatbot_configs` (lib/db/src/schema/chatbot.ts) matches the frontend
 // `ChatbotConfig` type field-for-field, INCLUDING `priceRupeesPerMonth`
@@ -25,5 +30,24 @@ export const chatbotConfigService = {
 
   async save(tenantId: string, data: Partial<ChatbotConfig>): Promise<ChatbotConfig> {
     return apiPut<ChatbotConfig>(`/api/chatbot/config/${tenantId}`, data);
+  },
+
+  /** The real AI call — `POST /api/chatbot/chat`. Server does the config/
+   * usage-limit checks, calls the LLM, and persists both sides of the
+   * exchange; the client just sends the raw message and gets a reply back. */
+  async chat(message: string): Promise<ChatReply> {
+    return apiPost<ChatReply>('/api/chatbot/chat', { message });
+  },
+};
+
+export type ChatbotUsage = { studentProfileId: string; tenantId: string; periodMonth: string; messageCount: number; isPaid: boolean };
+
+function currentPeriodMonth(): string {
+  return new Date().toISOString().slice(0, 7); // 'YYYY-MM' — matches the api-server route's convention
+}
+
+export const chatbotUsageService = {
+  async get(tenantId: string, studentProfileId: string): Promise<ChatbotUsage> {
+    return apiGet<ChatbotUsage>('/api/chatbot/usage', { tenantId, studentProfileId, periodMonth: currentPeriodMonth() });
   },
 };
