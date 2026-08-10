@@ -1,25 +1,21 @@
 #!/bin/sh
-# Runs at container start, when Render's real PORT env var is actually present.
-# `vite build` needs it — vite.config.ts reads process.env.PORT at config-eval
-# time, before Vite even knows whether it's building or serving. See the
-# Dockerfile's top comment for why this can't happen during `docker build`.
+# Runs at container start, when Render's real env vars are actually present.
+# vite.config.ts reads PORT/BASE_PATH at config-eval time, before Vite even
+# knows whether it's building or serving, and Vite inlines VITE_SUPABASE_*/
+# VITE_API_URL into the bundle at build time — none of that can happen any
+# earlier than this point on Render. See the Dockerfile's top comment.
 set -e
 
 if [ -z "$PORT" ]; then
   echo "ERROR: PORT is not set." >&2
-  echo "Render sets this automatically for every Web Service. Running locally? Pass -e PORT=5173." >&2
+  echo "Render sets this automatically for every Web Service. Running locally? Pass -e PORT=8090." >&2
   exit 1
 fi
 
-# Same "do it at container start, not at docker build time" reasoning as the
-# frontend build below: DATABASE_URL is a runtime env var injected by Render
-# into the running container, never visible during `docker build`. drizzle.config.ts
-# (lib/db/drizzle.config.ts) throws immediately if DATABASE_URL is missing, so this
-# genuinely could not run any earlier than this point.
-#
-# No backend depends on this yet (frontend-only app today, per the Dockerfile's
-# top comment), so a deploy with no DATABASE_URL configured is a valid, supported
-# case — skip the migration instead of failing the whole container.
+# DATABASE_URL is a runtime env var injected by Render into the running
+# container, never visible during `docker build`. drizzle.config.ts
+# (lib/db/drizzle.config.ts) throws immediately if DATABASE_URL is missing, so
+# this genuinely could not run any earlier than this point.
 #
 # Deliberately `push`, not `push-force`: this runs unattended against a
 # possibly-non-empty production database. `push` stops and waits on ambiguous
@@ -35,8 +31,17 @@ else
   echo "Database schema push complete."
 fi
 
-echo "Building QuizSet (PORT=$PORT, BASE_PATH=$BASE_PATH)..."
-pnpm --filter @workspace/quizset run build
+# The frontend calls the backend at the SAME origin it's served from (this one
+# container answers both), so VITE_API_URL is always the empty string here —
+# main.tsx's `if (apiUrl)` guard then leaves the api-client's base URL unset,
+# and every /api/... request naturally resolves as same-origin. No need to
+# know this container's own public Render URL in advance.
+echo "Building QuizSet frontend (PORT=$PORT, BASE_PATH=$BASE_PATH)..."
+VITE_API_URL= pnpm --filter @workspace/quizset run build
 
-echo "Serving artifacts/quizset/dist/public on port $PORT..."
-exec serve -s artifacts/quizset/dist/public -l "$PORT"
+echo "Building QuizSet api-server..."
+pnpm --filter @workspace/api-server run build
+
+echo "Starting combined frontend+backend on port $PORT..."
+export STATIC_DIR="/app/artifacts/quizset/dist/public"
+exec node --enable-source-maps artifacts/api-server/dist/index.mjs

@@ -357,3 +357,54 @@ one sample topic file.
 
 These are real Supabase Auth accounts on the live database — rotate/delete them before this ever
 stops being an internal demo.
+
+---
+
+## 2026-08-10 — Collapsed to a single Render Web Service; real AI chatbot ported in
+
+Two follow-up requests, same day: (1) real API calls on the deployed frontend were silently failing
+("`.map is not a function`") because `setApiBaseUrl()` was defined but never called anywhere — every
+`/api/*` request resolved as a relative path against the frontend's own host, and Render's nginx SPA
+fallback returned `index.html` (200 OK, `text/html`) for those unmatched paths instead of ever reaching
+the real api-server. (2) User then asked for one Render service instead of two, and for the AI chatbot
+feature — previously only in the separate `quiz-ITI` (Pallawi Di's) project as a standalone Python
+FastAPI service — to exist inside QuizSet itself, "saari cheez QuizSet me hi honi chahiye, koi alag se
+nahi."
+
+- **Real AI chatbot, ported into the existing Node/Express stack, not a second Python service.**
+  `POST /api/chatbot/chat` (new, in `artifacts/api-server/src/routes/chatbot.ts`) does what
+  `quiz-ITI/chatbot-backend/main.py`'s `/chat` route did — config/usage-limit checks, the actual LLM
+  call, persisting both sides of the exchange, incrementing the monthly counter — all server-side, in
+  one request. Every other chatbot route (config CRUD, usage, messages) already existed from an earlier
+  session; only the real-reply endpoint was missing. Key difference from the original: the key is a
+  single platform-wide `OPENAI_API_KEY` env var, not a per-tenant `chatbot_configs.api_key` column —
+  this schema's `chatbot_configs` never had that column, and per-coaching billing/keys was out of scope
+  for this pass. `artifacts/quizset/src/pages/AI.tsx` now calls this real endpoint (via a new
+  `chatbotConfigService.chat()` / `chatbotUsageService.get()`) instead of `mock.ts`'s canned
+  keyword-matcher, which was deleted as dead code once nothing referenced it anymore.
+- **Collapsed frontend + backend into one Render Web Service.** `artifacts/api-server/src/app.ts` now
+  optionally serves the built SPA itself: when `STATIC_DIR` is set, `express.static()` + a regex SPA
+  fallback (`/^(?!\/api).*/ → index.html`) are mounted *after* `/api`, so a real API route is never
+  shadowed by the fallback. No nginx, no second service, no cross-origin base-URL wiring — the frontend
+  calls `/api/...` same-origin. `main.tsx` guards `setApiBaseUrl()` on a non-empty `VITE_API_URL`, so
+  building with `VITE_API_URL=` (empty) — which is what the entrypoint now does for this deploy shape —
+  correctly leaves the base URL unset rather than pointing at nothing.
+- Rewrote the root `Dockerfile`/`docker-entrypoint.sh` accordingly: still builds nothing at `docker
+  build` time (same build-time-env-var trap this repo has hit twice before — PORT/BASE_PATH throw at
+  Vite config-eval time, and `VITE_SUPABASE_*`/`VITE_API_URL` get inlined into the bundle, so none of
+  it can happen before Render's real runtime env vars exist). At container start: push the DB schema if
+  `DATABASE_URL` is set, build the quizset frontend, build the api-server, then run ONE process —
+  `node artifacts/api-server/dist/index.mjs` with `STATIC_DIR` pointed at the frontend's `dist/public`.
+  The old `serve -s` static-file server dependency is gone; Express does that job now.
+- Verified locally end-to-end (no Docker available in this environment, so simulated the entrypoint's
+  steps by hand): built the frontend with `VITE_API_URL=` empty, built the api-server, started it with
+  `STATIC_DIR` pointed at the frontend output, then confirmed all four: `/` serves the SPA (200,
+  `text/html`), an arbitrary client-side route also 200s via the fallback, a static asset 200s with the
+  right content-type, and — critically — `/api/courses` still 401s on a missing token rather than
+  falling through to the SPA fallback. A real owner JWT against `/api/courses` on this same combined
+  server returned real course data.
+- **Render setup going forward**: one Web Service (Docker, repo root), with `PORT` (Render sets this
+  automatically), `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `VITE_SUPABASE_URL`,
+  `VITE_SUPABASE_ANON_KEY`, and (once available) `OPENAI_API_KEY` all set as that one service's runtime
+  env vars. No `VITE_API_URL` needed — leave it unset, same-origin resolves correctly. No separate
+  frontend service, no separate api-server service.
