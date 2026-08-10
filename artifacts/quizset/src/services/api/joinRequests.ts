@@ -43,6 +43,21 @@ export const joinRequestService = {
     return { user, tenant };
   },
 
+  /** Recovery path for `joinByCode`'s 409 ("account already belongs to a
+   * coaching") — that response has no tenant object to hand back, so the
+   * caller re-fetches its own current profile instead of trying to parse
+   * one out of the error body. */
+  async getMyProfile(): Promise<AuthUser> {
+    const profile = await apiGet<ProfileApiRow>('/api/profiles/me');
+    return {
+      id: profile.id,
+      name: profile.name,
+      email: profile.email,
+      role: profile.role,
+      tenantId: profile.tenantId ?? undefined,
+    };
+  },
+
   async requestToJoin(studentName: string, studentEmail: string, tenantId: string): Promise<JoinRequest> {
     return apiPost<JoinRequest>('/api/join-requests', { tenantId, studentName, studentEmail });
   },

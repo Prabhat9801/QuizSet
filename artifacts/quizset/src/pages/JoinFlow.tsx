@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { ArrowRight, Building2, CheckCircle2, Search } from 'lucide-react';
 import { Button, Card, PageHeader, Tabs } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { joinRequestService, tenantService } from '@/services/api';
+import { ApiError, joinRequestService, tenantService } from '@/services/api';
 import { Tenant } from '@/types';
 
 /**
@@ -35,10 +35,27 @@ export function JoinFlow() {
 
   const joinNow = async () => {
     if (!found || !user) return;
-    const { user: updated } = await joinRequestService.joinByCode(user.id, found.joinCode);
-    login(updated);
-    toast('Welcome to ' + found.name, 'You can now see your courses.');
-    navigate('/student/dashboard', { replace: true });
+    try {
+      const { user: updated } = await joinRequestService.joinByCode(user.id, found.joinCode);
+      login(updated);
+      toast('Welcome to ' + found.name, 'You can now see your courses.');
+      navigate('/student/dashboard', { replace: true });
+    } catch (err) {
+      // 409 here means the account's OWN profile already has a tenantId —
+      // most commonly because the local `user` state (e.g. read from a
+      // stale session on load) hasn't caught up with what the server
+      // already knows. Re-fetch the real profile and move on instead of
+      // leaving the student stuck re-submitting a join code they don't
+      // need — see the AppContext session-precedence fix this pairs with.
+      if (err instanceof ApiError && err.status === 409) {
+        const updated = await joinRequestService.getMyProfile();
+        login(updated);
+        toast('Already joined', "You're already part of a coaching — taking you to your dashboard.");
+        navigate('/student/dashboard', { replace: true });
+        return;
+      }
+      throw err;
+    }
   };
 
   // ---- Flow B: search + request ----

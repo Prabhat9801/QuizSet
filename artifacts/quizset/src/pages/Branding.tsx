@@ -1,8 +1,16 @@
 import { useState } from 'react';
-import { ArrowRight, Save } from 'lucide-react';
-import { Button, Card, Field, PageHeader } from '@/components/ui';
+import { ArrowRight, RefreshCw, Save } from 'lucide-react';
+import { Alert, Button, Card, Field, PageHeader } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { tenantService } from '@/services/api';
+import { ApiError, tenantService } from '@/services/api';
+
+/** Matches the api-server's own `joinCodeFrom()` — a short, memorable
+ * upper-case code new coaching owners can hand out immediately without
+ * having to think one up. The owner can still overwrite it with anything. */
+function randomJoinCode(name: string): string {
+  const base = name.replace(/[^a-zA-Z0-9]/g, '').slice(0, 7).toUpperCase() || 'COACHING';
+  return `${base}${Math.floor(1000 + Math.random() * 9000)}`;
+}
 
 /**
  * Unlike the earlier version of this page, saving here actually repaints the
@@ -17,6 +25,10 @@ export function Branding() {
   const [form, setForm] = useState({ name: tenant.name, supportEmail: tenant.supportEmail, primaryColor: tenant.primaryColor, secondaryColor: tenant.secondaryColor, welcome: 'Prepare with intent. Your next score starts here.' });
   const [saving, setSaving] = useState(false);
 
+  const [joinCode, setJoinCode] = useState(tenant.joinCode);
+  const [savingCode, setSavingCode] = useState(false);
+  const [codeError, setCodeError] = useState('');
+
   const save = async () => {
     if (!tenantId) return;
     setSaving(true);
@@ -24,6 +36,24 @@ export function Branding() {
     await refreshTenants();
     setSaving(false);
     toast('Branding saved', 'Your students see this the moment they next load a page.');
+  };
+
+  const saveJoinCode = async (code: string) => {
+    if (!tenantId) return;
+    const trimmed = code.trim().toUpperCase();
+    if (!trimmed) return;
+    setCodeError('');
+    setSavingCode(true);
+    try {
+      await tenantService.update(tenantId, { joinCode: trimmed });
+      await refreshTenants();
+      setJoinCode(trimmed);
+      toast('Join code updated', 'Students use this code to join your coaching.');
+    } catch (err) {
+      setCodeError(err instanceof ApiError ? err.message : 'Could not update the join code.');
+    } finally {
+      setSavingCode(false);
+    }
   };
 
   return (
@@ -63,6 +93,31 @@ export function Branding() {
           <Field label="Welcome message">
             <textarea className="form-input" value={form.welcome} onChange={(e) => setForm({ ...form, welcome: e.target.value })} />
           </Field>
+        </Card>
+        <Card>
+          <div className="card-title">
+            <div>
+              <h2>Join code</h2>
+              <p>Share this with your students so they can join your coaching</p>
+            </div>
+          </div>
+          <div className="form-grid">
+            <Field label="Join code">
+              <input
+                className="form-input"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                onBlur={() => joinCode.trim() && joinCode.trim().toUpperCase() !== tenant.joinCode && saveJoinCode(joinCode)}
+                placeholder="e.g. SUNRISE2026"
+              />
+            </Field>
+            <Field label=" ">
+              <Button variant="secondary" disabled={savingCode} onClick={() => saveJoinCode(randomJoinCode(tenant.name))}>
+                <RefreshCw size={14} /> Generate a new code
+              </Button>
+            </Field>
+          </div>
+          <Alert tone="danger">{codeError}</Alert>
         </Card>
         <Card className="brand-preview">
           <div className="preview-label">LIVE PREVIEW</div>
