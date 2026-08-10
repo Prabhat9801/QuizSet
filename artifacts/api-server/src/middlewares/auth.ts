@@ -46,8 +46,14 @@ declare global {
 //     correctness beats shaving latency here. If this ever needs to scale,
 //     swap in local `jose`-based HS256 verification using
 //     `SUPABASE_JWT_SECRET` and cache verified tokens for their remaining TTL.
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Falls back to the VITE_-prefixed vars so a single-service deploy (this
+// api-server also serving the built frontend, see STATIC_DIR in app.ts) only
+// needs ONE Supabase URL/anon-key pair set in Render, not two copies of the
+// same value under different names — VITE_SUPABASE_URL/VITE_SUPABASE_ANON_KEY
+// are already required for the frontend build, so reuse them here too.
+const SUPABASE_URL = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY =
+  process.env.SUPABASE_ANON_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.VITE_SUPABASE_ANON_KEY;
 
 /** Exported so `POST /api/profiles/me` (self-service profile creation, which
  * by definition runs before any `profiles` row exists) can verify identity
