@@ -2,10 +2,20 @@ import { createRoot } from 'react-dom/client';
 
 import App from './App';
 import { ErrorBoundary } from '@/components/error-boundary';
-import { setApiAuthTokenGetter } from '@/services/api/http';
+import { setApiAuthTokenGetter, setApiBaseUrl } from '@/services/api/http';
 import { getSession } from '@/services/supabase';
 
 import './index.css';
+
+// Point every relative `/api/...` request at the real API server. Without
+// this, requests resolve against whatever host serves the frontend itself
+// (e.g. the Render static/nginx frontend), which has no `/api` route —
+// nginx's SPA fallback returns `index.html` with a 200, so the client parses
+// it as a "successful" text response instead of ever reaching the real API.
+const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
+if (apiUrl) {
+  setApiBaseUrl(apiUrl);
+}
 
 // Wire the real API client's bearer-token seam to the current Supabase
 // session, once, at startup. When Supabase isn't configured (no
