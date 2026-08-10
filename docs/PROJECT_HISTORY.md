@@ -346,3 +346,14 @@ one sample topic file.
   (80 + 30 questions) before the user caught it ("pura pura question bank and syllabus daal rahe h n?")
   — corrected by wiping those rows and reseeding from the complete directory trees above. Left here so
   a future session doesn't repeat the same shortcut.
+
+**Demo login credentials** (tenant "QuizSet Demo Academy", join code `DEMO2026`):
+
+| Role | Email | Password |
+|---|---|---|
+| Coaching owner | `owner@demo-academy.test` | `DemoOwner@123` |
+| Student 1 | `student1@demo-academy.test` | `DemoStudent@123` |
+| Student 2 | `student2@demo-academy.test` | `DemoStudent@123` |
+
+These are real Supabase Auth accounts on the live database — rotate/delete them before this ever
+stops being an internal demo.
