@@ -408,3 +408,87 @@ nahi."
   `VITE_SUPABASE_ANON_KEY`, and (once available) `OPENAI_API_KEY` all set as that one service's runtime
   env vars. No `VITE_API_URL` needed — leave it unset, same-origin resolves correctly. No separate
   frontend service, no separate api-server service.
+
+---
+
+## 2026-08-11 — Real streamed AI chatbot, join-loop root cause, single-service auth reuse
+
+Same demo tenant, several real bugs found via actual usage (not just code review) and fixed:
+
+- **Env var duplication removed**: the api-server required its own `SUPABASE_URL`/`SUPABASE_ANON_KEY`
+  on top of the `VITE_`-prefixed ones already required for the frontend build — same project, same
+  values, two names. `artifacts/api-server/src/middlewares/auth.ts` now falls back to the `VITE_` vars
+  when the plain ones aren't set, so a single-service Render deploy only needs one pair.
+- **Real root cause of "already-joined student stuck re-submitting a join code" found and fixed** — a
+  first pass (409 handling in `JoinFlow.tsx`) treated the symptom but missed the actual bug:
+  `AppContext.tsx`'s `allTenants` was only ever populated from `services/mock.ts`'s localStorage seed
+  data. `refreshTenants()` called mock's `tenantService.list()` unconditionally, and the real
+  `GET /api/tenants` (the equivalent) is platform-owner-only anyway — so a real coaching/student
+  session's own tenant was **never** actually fetched into `allTenants`, `tenant` stayed `NO_TENANT`
+  forever regardless of a correct `user.tenantId`, and `hasTenant` being permanently false is what kept
+  the route guard bouncing the student back to `/student/join`. Fixed by fetching just the caller's own
+  tenant via `GET /api/tenants/:id` (allowed for any authenticated role on their own tenantId) whenever
+  a real session's `tenantId` isn't yet in `allTenants`, and by making `refreshTenants()` do the same
+  for real sessions instead of falling through to the mock list. Verified live: a student JWT
+  successfully fetches its own tenant (200, real data) through this exact path.
+- **Coaching owners can now manage their own join code** (`Branding.tsx`) — view it, type a new one, or
+  regenerate a random one (same `NAME####` pattern the api-server itself generates for a brand-new
+  tenant). Previously only ever set once, at tenant creation, with no owner-facing control — meaningful
+  now that a leaked/shared code is a real risk this project explicitly discussed and decided NOT to
+  solve with per-student verification (email/phone OTP only proves "a live human sent this," not
+  "this human is actually our student" — that check can only come from the coaching owner themself,
+  which the existing join-request approval flow already provides).
+- **Real AI chatbot backend, streamed** — `POST /api/chatbot/chat` (added last session) now streams via
+  SSE instead of returning one JSON blob: `artifacts/api-server/src/routes/chatbot.ts`'s
+  `streamOpenAI()` opens OpenAI's own `stream: true` SSE feed and forwards each token chunk to the
+  client as `data: {"chunk": "..."}\n\n`, still persisting the full accumulated reply + incrementing
+  usage once the stream ends (`data: {"done": true, "usage": {...}}\n\n`). The system prompt now also
+  explicitly forbids markdown syntax (**, ##, backticks, `-` bullets) since the client renders plain
+  text, not a markdown parser — asking the model not to use it beats trying to strip it after the fact.
+  On the frontend, `lib/api-client-react/src/custom-fetch.ts` gained a new exported `openStream()` —
+  reuses the same base-URL/auth-token logic as `customFetch()` but hands back the raw streaming
+  `Response` instead of trying to parse one full body, since a generic client can't know how to parse
+  every possible streamed shape. `AI.tsx`'s `ChatPanel` appends each chunk to the last message in place,
+  so the reply visibly grows token-by-token instead of appearing all at once.
+- **Practice Sets feature added** — fixed, pre-baked 100-question worksheets, ported from the ORIGINAL
+  single-tenant apps this project's two question banks came from (confirmed via a dedicated research
+  pass, since neither original app's identity matched what "Kundan Bhaiya"/"Pallawi Di" initially
+  suggested):
+  - `kundan_quiz` (Desktop) is "Kundan Bhaiya's" system — **50 fixed sets**, actually titled **"Lab
+    Assistant (Science)"** in its own UI (Chemistry/Physics/Maths, 11th/12th board to GATE level) — NOT
+    "JEE/NEET", which this project had wrongly assumed and used when first naming the demo course.
+    Corrected: the Chemistry/Physics/Maths course is now named **"Lab Assistant (Science) — Complete
+    Practice"** (renamed live in the DB, not just for new seeds).
+  - The true "Pallawi Di" **30-fixed-set** system is `Downloads/quiz-ITI` (Electronic Mechanic /
+    Radio & TV) — NOT the currently-checked-out Desktop `quiz-ITI` (which is a *later* rewrite into the
+    multi-tenant SaaS platform, where the practice-set concept was dropped entirely). This project's own
+    "ITI Electronics & Trade Complete Practice" course already draws from the right source.
+  - `artifacts/quizset/src/lib/practiceSets.ts` — a seeded mulberry32 shuffle (matching the original
+    `generate-practice-sets.mjs`'s algorithm) of a course's real question pool, sliced into fixed
+    100-question sets; fully deterministic, computed on demand from the live pool rather than stored,
+    so no schema migration was needed. `practiceSetCount()` caps at 50 for the Science course / 30 for
+    the Electronics course (matching each original app's own count) or fewer if the pool can't fill
+    that many without overlap.
+  - New `src/pages/PracticeSets.tsx` — the "Set 1…Set N" grid with a green checkmark on completed sets
+    (read from real `Attempt` history, filtered to `practiceScope.mode === 'set'`), an optional timer,
+    and a Start button — new route `/student/courses/:id/practice-sets`, linked from `CourseDetail`.
+- **Timer restored to practice runs, deliberately reversing an earlier decision** — this project had
+  previously removed the practice-quiz timer, reasoning that practice should always be self-paced. The
+  two ORIGINAL apps both actually had an optional, off-by-default whole-run countdown on every practice
+  mode (not just Practice Sets), and the user explicitly asked for that back after seeing the research
+  findings. Re-added as an **opt-in** toggle (still off by default, so the earlier reasoning isn't fully
+  discarded, just made optional): `QuizSetup.tsx` and `PracticeSets.tsx` both gained a "set a timer" +
+  minutes input, threaded through `practiceHandoff.ts`'s one-shot handoff (`timerSeconds` field, new) to
+  `PracticeQuizRunner` (`QuizRunner.tsx`), which now shows a countdown pill and — on reaching zero —
+  a warning banner ONLY, exactly matching the original apps' own explicitly-documented decision to never
+  auto-submit on expiry. `TimedQuizRunner` (Live Tests' own timer, which DOES auto-submit) was
+  deliberately left untouched — that auto-submit behavior is inherent to a scheduled, proctored sitting
+  and is a different feature, not something this change should touch.
+- **Custom mode's picker rebuilt as a real collapsible tree** (`QuizSetup.tsx`'s new `CustomTree`),
+  replacing a flat chip list that couldn't distinguish "this whole unit" from "these specific topics."
+  Matches the two original apps' own Custom Practice tree exactly: a tri-state checkbox per unit
+  (✓ = every topic selected, `–` = some, empty = none) that bulk-toggles the whole unit, a chevron to
+  expand/collapse into per-topic checkboxes, a live "N/M topics" count per unit, and "Select whole
+  syllabus"/"Clear all" bulk actions above the tree. Topic-wise/Unit-wise/Multi-unit modes keep their
+  existing flat chip pickers — only Custom needed the tree, since it's the only mode mixing both
+  granularities at once.

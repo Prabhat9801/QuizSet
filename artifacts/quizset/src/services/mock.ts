@@ -556,6 +556,8 @@ function sameScope(a: PracticeScope, b: PracticeScope): boolean {
       return b.mode === a.mode && sameSet(a.units, (b as typeof a).units);
     case 'custom':
       return b.mode === 'custom' && sameSet(a.topics, b.topics) && sameSet(a.units, b.units);
+    case 'set':
+      return b.mode === 'set' && a.setNumber === b.setNumber;
   }
 }
 

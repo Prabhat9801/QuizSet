@@ -1,10 +1,7 @@
 import type { ChatbotConfig } from '@/types';
-import { apiGet, apiPost, apiPut } from './http';
+import { apiGet, apiPost, apiPostStream, apiPut } from './http';
 
-export type ChatReply = {
-  reply: string;
-  usage: { used: number; freeLimit: number; cap: number; isPaid: boolean };
-};
+export type ChatUsage = { used: number; freeLimit: number; cap: number; isPaid: boolean };
 
 // `chatbot_configs` (lib/db/src/schema/chatbot.ts) matches the frontend
 // `ChatbotConfig` type field-for-field, INCLUDING `priceRupeesPerMonth`
@@ -32,11 +29,37 @@ export const chatbotConfigService = {
     return apiPut<ChatbotConfig>(`/api/chatbot/config/${tenantId}`, data);
   },
 
-  /** The real AI call — `POST /api/chatbot/chat`. Server does the config/
-   * usage-limit checks, calls the LLM, and persists both sides of the
-   * exchange; the client just sends the raw message and gets a reply back. */
-  async chat(message: string): Promise<ChatReply> {
-    return apiPost<ChatReply>('/api/chatbot/chat', { message });
+  /** The real AI call — `POST /api/chatbot/chat`, streamed as server-sent
+   * events. Server does the config/usage-limit checks, calls the LLM, and
+   * persists both sides of the exchange; the client sends the raw message
+   * and gets each token via `onToken` as it arrives, then the final usage
+   * once the reply is complete. Throws if the stream reports an error
+   * (e.g. a limit/config rejection) — same as a normal ApiError elsewhere. */
+  async chat(message: string, onToken: (chunk: string) => void): Promise<ChatUsage> {
+    const res = await apiPostStream('/api/chatbot/chat', { message });
+    if (!res.body) throw new Error('No response stream from the server.');
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('data:')) continue;
+        const payload = JSON.parse(trimmed.slice('data:'.length).trim()) as
+          | { chunk: string }
+          | { error: string }
+          | { done: true; usage: ChatUsage };
+        if ('error' in payload) throw new Error(payload.error);
+        if ('chunk' in payload) onToken(payload.chunk);
+        if ('done' in payload) return payload.usage;
+      }
+    }
+    throw new Error('Stream ended without a usage summary.');
   },
 };
 

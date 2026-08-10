@@ -19,6 +19,7 @@ import { CreateCourse } from '@/pages/CourseCreate';
 import { StudentsPage } from '@/pages/Students';
 import { StudentCourses, CourseDetail, Preview } from '@/pages/StudentCourseLibrary';
 import { QuizSetup } from '@/pages/QuizSetup';
+import { PracticeSets } from '@/pages/PracticeSets';
 import { Attempt } from '@/pages/Attempt';
 import { ResultsHistory, ResultReview, CoachingAttemptReview } from '@/pages/Results';
 import { CourseStudentDashboard } from '@/pages/CourseStudentDashboard';
@@ -102,6 +103,7 @@ function Router() {
         <Route path="/student/courses/:id/preview">{() => <AppRoute component={Preview} roles={['student']} />}</Route>
         <Route path="/student/courses/:id/syllabus">{() => <AppRoute component={() => <Syllabus scope="student" />} roles={['student']} />}</Route>
         <Route path="/student/courses/:id/setup">{() => <AppRoute component={QuizSetup} roles={['student']} />}</Route>
+        <Route path="/student/courses/:id/practice-sets">{() => <AppRoute component={PracticeSets} roles={['student']} />}</Route>
         <Route path="/student/courses/:id/attempt">{() => <AppRoute component={Attempt} roles={['student']} />}</Route>
         <Route path="/student/courses/:id">{() => <AppRoute component={CourseDetail} roles={['student']} />}</Route>
         <Route path="/student/courses">{() => <AppRoute component={StudentCourses} roles={['student']} />}</Route>

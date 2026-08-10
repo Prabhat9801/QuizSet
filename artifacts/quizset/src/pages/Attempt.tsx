@@ -24,6 +24,7 @@ export function Attempt() {
   const [course, setCourse] = useState<Course | null>(null);
   const [questions, setQuestions] = useState<Question[] | null>(null);
   const [scope, setScope] = useState<PracticeScope>(FULL_SCOPE);
+  const [timerSeconds, setTimerSeconds] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (!params?.id || !user) return;
@@ -36,6 +37,7 @@ export function Attempt() {
         const byId = new Map(pool.map((q) => [q.id, q]));
         setScope(pending.scope);
         setQuestions(pending.questionIds.map((id) => byId.get(id)).filter((q): q is Question => Boolean(q)));
+        setTimerSeconds(pending.timerSeconds);
       } else {
         setScope(FULL_SCOPE);
         setQuestions(await attemptService.pickForPractice(user.id, c.id, FULL_SCOPE, pool, pool.length));
@@ -63,5 +65,5 @@ export function Attempt() {
     navigate(`/student/results/${attempt.id}`, { replace: true });
   };
 
-  return <PracticeQuizRunner title={course.name} questions={questions} onFinish={finish} />;
+  return <PracticeQuizRunner title={course.name} questions={questions} timerSeconds={timerSeconds} onFinish={finish} />;
 }

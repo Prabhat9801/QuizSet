@@ -39,15 +39,18 @@ function sameScope(a: PracticeScope, b: PracticeScope): boolean {
       return b.mode === a.mode && sameSet(a.units, (b as typeof a).units);
     case "custom":
       return b.mode === "custom" && sameSet(a.topics, b.topics) && sameSet(a.units, b.units);
+    case "set":
+      return b.mode === "set" && a.setNumber === b.setNumber;
   }
 }
 
 function isPracticeScope(value: unknown): value is PracticeScope {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
-  if (!["full", "topic", "unit", "multi-unit", "custom"].includes(v.mode as string)) return false;
+  if (!["full", "topic", "unit", "multi-unit", "custom", "set"].includes(v.mode as string)) return false;
   if ((v.mode === "topic" || v.mode === "custom") && !Array.isArray(v.topics)) return false;
   if ((v.mode === "unit" || v.mode === "multi-unit" || v.mode === "custom") && !Array.isArray(v.units)) return false;
+  if (v.mode === "set" && typeof v.setNumber !== "number") return false;
   return true;
 }
 
@@ -196,6 +199,13 @@ router.post("/attempts/practice-questions", authenticate, requireRole("student",
 
   if (!isPracticeScope(body.scope)) throw badRequest("scope is not a valid PracticeScope.");
   const scope = body.scope;
+  if (scope.mode === "set") {
+    // Practice Sets are computed client-side (deterministic seeded shuffle
+    // of the whole pool) and their exact question IDs are handed straight
+    // to the attempt — never picked through this no-repeat endpoint, since
+    // a set must always be the SAME 100 questions, seen or not.
+    throw badRequest("Practice sets are resolved client-side, not via this endpoint.");
+  }
   const count = requireInt(body.count, "count");
 
   const pool = await db.select().from(questions).where(eq(questions.questionBankId, course.questionBankId));

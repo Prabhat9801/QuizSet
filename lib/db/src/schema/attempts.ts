@@ -14,7 +14,12 @@ export type PracticeScope =
   | { mode: "topic"; topics: string[] }
   | { mode: "unit"; units: string[] }
   | { mode: "multi-unit"; units: string[] }
-  | { mode: "custom"; topics: string[]; units: string[] };
+  | { mode: "custom"; topics: string[]; units: string[] }
+  // A fixed, pre-baked 100-question worksheet ("Practice Sets") — the exact
+  // question list is computed client-side (deterministic seeded shuffle),
+  // never picked via the no-repeat endpoint below, so this variant only
+  // needs to round-trip through storage/history, not drive scope filtering.
+  | { mode: "set"; setNumber: number };
 
 // One finished quiz/live-test run. `liveTestId` is only set for a timed,
 // live-test attempt; `practiceScope` is only set for mode: 'practice'.

@@ -23,13 +23,31 @@ function ChatPanel({ suggestions, onUsage }: { suggestions: string[]; onUsage?: 
     setText('');
     setMessages((x) => [...x, { from: 'user', text: current }]);
     setLoading(true);
+    // Reserve the reply's slot up front and append each streamed token to it
+    // in place, so the student sees the answer arrive word-by-word instead
+    // of waiting for the whole thing then getting it all at once.
+    let started = false;
     try {
-      const { reply, usage } = await chatbotConfigService.chat(current);
-      setMessages((x) => [...x, { from: 'ai', text: reply }]);
+      const usage = await chatbotConfigService.chat(current, (chunk) => {
+        setLoading(false);
+        setMessages((x) => {
+          if (!started) {
+            started = true;
+            return [...x, { from: 'ai', text: chunk }];
+          }
+          const next = [...x];
+          next[next.length - 1] = { from: 'ai', text: next[next.length - 1].text + chunk };
+          return next;
+        });
+      });
       onUsage?.(usage.used);
     } catch (err) {
-      const message = err instanceof ApiError ? (err.data as { error?: string })?.error ?? err.message : 'Kuch galat ho gaya, dobara koshish karein.';
-      setMessages((x) => [...x, { from: 'ai', text: message }]);
+      const message = err instanceof ApiError ? (err.data as { error?: string })?.error ?? err.message : err instanceof Error ? err.message : 'Kuch galat ho gaya, dobara koshish karein.';
+      if (started) {
+        setMessages((x) => [...x.slice(0, -1), { from: 'ai', text: message }]);
+      } else {
+        setMessages((x) => [...x, { from: 'ai', text: message }]);
+      }
     } finally {
       setLoading(false);
     }

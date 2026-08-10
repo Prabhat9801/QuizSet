@@ -113,8 +113,8 @@ export function CourseDetail() {
               <small>Questions</small>
             </div>
             <div>
-              <b>No timer</b>
-              <small>Practice at your own pace</small>
+              <b>Optional timer</b>
+              <small>Untimed by default, or set your own</small>
             </div>
             <div>
               <b>{course.preview}</b>
@@ -141,13 +141,18 @@ export function CourseDetail() {
             <Link href={`/student/courses/${course.id}/syllabus`} className="btn btn-ghost">
               <ListTree size={15} /> Syllabus
             </Link>
+            {purchased && (
+              <Link href={`/student/courses/${course.id}/practice-sets`} className="btn btn-ghost">
+                <FileText size={15} /> Practice Sets
+              </Link>
+            )}
           </div>
         </Card>
         <Card>
           <div className="card-title">
             <div>
               <h2>What you'll practise</h2>
-              <p>Topic-wise, Unit-wise, Multi-unit or Custom — pick your scope each time you practise</p>
+              <p>Topic-wise, Unit-wise, Multi-unit, Custom or Full — pick your scope each time, or open a fixed Practice Set for an exam-style run.</p>
             </div>
           </div>
           <div className="ai-box">

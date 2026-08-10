@@ -19,6 +19,7 @@
  */
 import {
   customFetch,
+  openStream,
   ApiError,
   setBaseUrl,
   setAuthTokenGetter,
@@ -91,4 +92,14 @@ export function apiPut<T>(path: string, body?: unknown): Promise<T> {
 
 export function apiDelete<T = void>(path: string): Promise<T> {
   return customFetch<T>(path, { method: 'DELETE' });
+}
+
+/** POST that returns the raw streaming Response (server-sent events), for
+ * endpoints like /api/chatbot/chat that stream a reply token-by-token
+ * instead of returning one JSON body. */
+export function apiPostStream(path: string, body?: unknown): Promise<Response> {
+  return openStream(path, {
+    method: 'POST',
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
 }

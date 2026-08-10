@@ -545,6 +545,27 @@ button, a, input, select, textarea { outline-color: hsl(var(--ring)); }
 @media (max-width:960px){.mode-grid{grid-template-columns:repeat(3,1fr)}}
 @media (max-width:600px){.mode-grid{grid-template-columns:repeat(2,1fr)}}
 
+/* Custom-mode unit/topic tree (QuizSetup.tsx CustomTree) + timer minute input
+   row + fixed-set tiles (PracticeSets.tsx) — share the setup screens above. */
+.custom-tree{display:grid}.tree-actions{display:flex;gap:8px;margin-bottom:14px}
+.tree-unit{border-top:1px solid hsl(var(--border));padding:10px 0}.tree-unit:first-child{border-top:0}
+.tree-unit-head{display:flex;align-items:center;gap:9px}
+.tree-chevron{display:inline-grid;place-items:center;border:0;background:transparent;color:hsl(var(--muted-foreground));cursor:pointer;padding:2px}
+.tree-checkbox{width:16px;height:16px;border:1px solid hsl(var(--border));border-radius:4px;background:transparent;display:grid;place-items:center;font-size:10px;line-height:1;cursor:pointer;color:transparent}
+.tree-checkbox.checked{background:hsl(var(--primary));border-color:hsl(var(--primary));color:white}
+.tree-checkbox.partial{background:hsl(var(--card));border-color:hsl(var(--primary));color:hsl(var(--primary))}
+.tree-unit-name{font-size:12.5px;font-weight:600;cursor:pointer}
+.tree-unit-count{margin-left:auto;color:hsl(var(--muted-foreground));font-size:11px;font-variant-numeric:tabular-nums}
+.tree-topics{display:grid;gap:7px;padding-left:26px;margin-top:8px}
+.tree-topic{display:flex;align-items:center;gap:9px;font-size:12px;color:hsl(var(--muted-foreground));cursor:pointer}.tree-topic input{accent-color:hsl(var(--primary));width:16px;height:16px}
+.timer-minutes-row{display:flex;align-items:center;gap:8px}
+.set-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:8px}
+.set-tile{position:relative;border:1px solid hsl(var(--border));background:hsl(var(--card));border-radius:9px;padding:10px;text-align:center;font-size:12px;font-weight:700;cursor:pointer;color:hsl(var(--foreground))}
+.set-tile.selected{border-color:hsl(var(--primary));background:hsl(var(--primary));color:white}
+.set-tile-check{position:absolute;top:-6px;right:-6px;width:17px;height:17px;border-radius:50%;background:#16a34a;color:white;display:grid;place-items:center}
+.timer.timer-up{background:#fee2e2;color:#991b1b}
+@media (max-width:600px){.set-grid{grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:6px}.set-tile{padding:8px 6px;font-size:11px}}
+
 /* Syllabus view (Syllabus.tsx) — one card per unit, each with its topics as
    chips and, when a study plan exists, a status badge + target date. */
 .syllabus-list{display:grid;gap:14px}

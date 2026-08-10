@@ -322,6 +322,49 @@ async function parseSuccessBody(
   }
 }
 
+/**
+ * Like `customFetch`, but for endpoints that stream a response body (e.g.
+ * server-sent events) instead of returning one parseable value. Reuses the
+ * same base-URL prefixing and bearer-token injection so callers don't have
+ * to duplicate that logic, but hands back the raw `Response` — reading and
+ * decoding the stream is the caller's job, since the shape of a streamed
+ * body isn't something this generic client can parse for every possible use.
+ * Still throws `ApiError` on a non-ok response, same as `customFetch`.
+ */
+export async function openStream(
+  input: RequestInfo | URL,
+  options: CustomFetchOptions = {},
+): Promise<Response> {
+  input = applyBaseUrl(input);
+  const { headers: headersInit, ...init } = options;
+  const method = resolveMethod(input, init.method);
+  const headers = mergeHeaders(isRequest(input) ? input.headers : undefined, headersInit);
+
+  if (
+    typeof init.body === "string" &&
+    !headers.has("content-type") &&
+    looksLikeJson(init.body)
+  ) {
+    headers.set("content-type", "application/json");
+  }
+
+  if (_authTokenGetter && !headers.has("authorization")) {
+    const token = await _authTokenGetter();
+    if (token) {
+      headers.set("authorization", `Bearer ${token}`);
+    }
+  }
+
+  const requestInfo = { method, url: resolveUrl(input) };
+  const response = await fetch(input, { ...init, method, headers });
+
+  if (!response.ok) {
+    const errorData = await parseErrorBody(response, method);
+    throw new ApiError(response, errorData, requestInfo);
+  }
+  return response;
+}
+
 export async function customFetch<T = unknown>(
   input: RequestInfo | URL,
   options: CustomFetchOptions = {},

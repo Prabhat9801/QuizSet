@@ -210,7 +210,15 @@ const MAX_MESSAGE_CHARS = 2000;
 const HISTORY_LIMIT = 10;
 const OPENAI_MODEL = "gpt-4o-mini";
 
-async function callOpenAI(system: string, history: { role: string; content: string }[]): Promise<string> {
+/** Opens OpenAI's SSE stream and calls `onToken` as each text chunk arrives.
+ * Returns the full accumulated reply once the stream ends, so the caller
+ * still has one complete string to persist — streaming only changes how the
+ * client sees the response arrive, not what ultimately gets saved. */
+async function streamOpenAI(
+  system: string,
+  history: { role: string; content: string }[],
+  onToken: (chunk: string) => void,
+): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new HttpError(503, "AI assistant is not configured on the server yet (missing OPENAI_API_KEY).");
@@ -223,18 +231,48 @@ async function callOpenAI(system: string, history: { role: string; content: stri
       body: JSON.stringify({
         model: OPENAI_MODEL,
         messages: [{ role: "system", content: system }, ...history],
+        stream: true,
       }),
     });
   } catch {
     throw new HttpError(502, "Could not reach OpenAI.");
   }
-  if (!res.ok) {
+  if (!res.ok || !res.body) {
     const text = await res.text().catch(() => "");
     console.error(`OpenAI error ${res.status}: ${text.slice(0, 500)}`);
     throw new HttpError(502, "AI se jawab nahi mil paya. Thodi der baad dobara koshish karein.");
   }
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  return data.choices?.[0]?.message?.content ?? "";
+
+  let full = "";
+  let buffer = "";
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith("data:")) continue;
+      const payload = trimmed.slice("data:".length).trim();
+      if (payload === "[DONE]") continue;
+      try {
+        const parsed = JSON.parse(payload) as { choices?: { delta?: { content?: string } }[] };
+        const delta = parsed.choices?.[0]?.delta?.content;
+        if (delta) {
+          full += delta;
+          onToken(delta);
+        }
+      } catch {
+        // Ignore a line that isn't valid JSON (e.g. a stray keep-alive) —
+        // OpenAI's stream is otherwise well-formed, so this is defensive,
+        // not expected to fire in practice.
+      }
+    }
+  }
+  return full;
 }
 
 router.post("/chatbot/chat", authenticate, requireRole("student"), async (req, res) => {
@@ -288,10 +326,36 @@ router.post("/chatbot/chat", authenticate, requireRole("student"), async (req, r
     (config.systemPrompt || "").trim() ||
     "Aap ek helpful exam-preparation tutor hain. Students ke doubts saral bhasha me clear karein. " +
       "Jawab Hindi (Devanagari) me dein, lekin technical terms English me hi rakhein. " +
-      "Sirf padhai/exam se related sawaalon ka jawab dein.";
+      "Sirf padhai/exam se related sawaalon ka jawab dein. " +
+      // The client renders replies as plain text, not markdown — asking for
+      // markdown syntax (**bold**, `code`, # headings, etc.) would just show
+      // the raw symbols to the student, so the prompt tells the model not to
+      // use it rather than relying on the UI to strip it after the fact.
+      "Plain text me jawab dein — koi markdown formatting (**, ##, backticks, bullet ke liye -) use na karein; " +
+      "list dikhani ho to numbered lines (1., 2., 3.) ya sirf naye paragraph use karein.";
 
-  const reply = await callOpenAI(systemPrompt, history);
-  if (!reply) throw new HttpError(502, "AI se khaali jawab aaya, dobara koshish karein.");
+  // ------------------------------------------------------------------ stream
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  let reply: string;
+  try {
+    reply = await streamOpenAI(systemPrompt, history, (chunk) => {
+      res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+    });
+  } catch (err) {
+    const message = err instanceof HttpError ? err.message : "AI se jawab nahi mil paya. Thodi der baad dobara koshish karein.";
+    res.write(`data: ${JSON.stringify({ error: message })}\n\n`);
+    res.end();
+    return;
+  }
+  if (!reply) {
+    res.write(`data: ${JSON.stringify({ error: "AI se khaali jawab aaya, dobara koshish karein." })}\n\n`);
+    res.end();
+    return;
+  }
 
   // ------------------------------------------------------------ persist both
   await db.insert(chatbotMessages).values([
@@ -315,15 +379,13 @@ router.post("/chatbot/chat", authenticate, requireRole("student"), async (req, r
     return created;
   });
 
-  res.json({
-    reply,
-    usage: {
-      used: updatedUsage.messageCount,
-      freeLimit: config.freeMessageLimit,
-      cap: config.monthlyMessageCap,
-      isPaid: updatedUsage.isPaid,
-    },
-  });
+  res.write(
+    `data: ${JSON.stringify({
+      done: true,
+      usage: { used: updatedUsage.messageCount, freeLimit: config.freeMessageLimit, cap: config.monthlyMessageCap, isPaid: updatedUsage.isPaid },
+    })}\n\n`,
+  );
+  res.end();
 });
 
 export default router;

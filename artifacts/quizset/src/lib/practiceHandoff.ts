@@ -1,6 +1,12 @@
 import { PracticeScope } from '@/types';
 
-type PendingPractice = { scope: PracticeScope; questionIds: string[] };
+// timerSeconds is optional — most practice runs stay untimed (per
+// CLAUDE.md's "Practice quiz has no timer" note). Practice Sets (and QuizSetup's
+// own optional timer toggle) are the exception: the original kundan_quiz/
+// quiz-ITI apps let a student opt into a whole-run countdown for ANY mode,
+// so this field carries that choice through the same one-shot handoff
+// rather than being a Practice-Sets-only concept.
+type PendingPractice = { scope: PracticeScope; questionIds: string[]; timerSeconds?: number };
 
 const key = (courseId: string) => `practiceSetup:${courseId}`;
 

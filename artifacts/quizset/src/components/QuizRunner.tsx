@@ -1,23 +1,50 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Check, Clock3, Flag, Send } from 'lucide-react';
-import { Button, Card } from '@/components/ui';
+import { Alert, Button, Card } from '@/components/ui';
 import { Question } from '@/types';
 import { formatTimer } from '@/lib/format';
 
 /**
- * Untimed, immediate-feedback mode — every course's practice system runs on
- * this: no forced timer, correctness revealed the instant an option is
- * picked, then a Next button. This is the ONLY runner a course attempt ever
- * uses — a course has no timed "type" of its own; a timed, scheduled,
- * one-shot experience is what LiveTest (and TimedQuizRunner below) is for.
+ * Immediate-feedback mode — every course's practice system runs on this:
+ * correctness revealed the instant an option is picked, then a Next button.
+ * This is the ONLY runner a course attempt ever uses — a course has no
+ * separate "type" of its own; a timed, scheduled, one-shot experience is
+ * what LiveTest (and TimedQuizRunner below) is for.
+ *
+ * `timerSeconds` is optional and off by default (most practice stays
+ * self-paced) — when set, it's a whole-run countdown matching the original
+ * kundan_quiz/quiz-ITI apps: reaching zero shows a dismissible warning only,
+ * it NEVER auto-submits. That was an explicit, deliberate call in those
+ * apps' own history, kept here on purpose rather than reusing
+ * TimedQuizRunner's auto-submit-at-zero behavior (which stays exclusive to
+ * LiveTest, per CLAUDE.md — that timer is inherent to a scheduled sitting,
+ * this one is just an optional self-imposed constraint).
  */
-export function PracticeQuizRunner({ title, questions, onFinish }: { title: string; questions: Question[]; onFinish: (answers: Record<number, number>, timeTakenSeconds: number) => void }) {
+export function PracticeQuizRunner({
+  title,
+  questions,
+  timerSeconds,
+  onFinish,
+}: {
+  title: string;
+  questions: Question[];
+  timerSeconds?: number;
+  onFinish: (answers: Record<number, number>, timeTakenSeconds: number) => void;
+}) {
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [secondsLeft, setSecondsLeft] = useState(timerSeconds ?? null);
   const startRef = useRef(Date.now());
   const q = questions[index];
   const locked = answers[index] !== undefined;
   const finish = () => onFinish(answers, Math.round((Date.now() - startRef.current) / 1000));
+  const timeUp = secondsLeft !== null && secondsLeft <= 0;
+
+  useEffect(() => {
+    if (secondsLeft === null || secondsLeft <= 0) return;
+    const id = setTimeout(() => setSecondsLeft((s) => (s === null ? null : s - 1)), 1000);
+    return () => clearTimeout(id);
+  }, [secondsLeft]);
 
   return (
     <div className="exam-interface">
@@ -25,11 +52,17 @@ export function PracticeQuizRunner({ title, questions, onFinish }: { title: stri
         <div>
           <h1>{title}</h1>
           <p>
-            Question {index + 1} of {questions.length} · untimed
+            Question {index + 1} of {questions.length} {timerSeconds === undefined && '· untimed'}
           </p>
         </div>
+        {secondsLeft !== null && (
+          <div className={`timer ${timeUp ? 'timer-up' : ''}`}>
+            <Clock3 size={14} /> {formatTimer(Math.max(0, secondsLeft))}
+          </div>
+        )}
       </div>
       <div className="content">
+        {timeUp && <Alert tone="warning">Time's up — you can keep going, or finish whenever you're ready.</Alert>}
         <Card>
           <div className="question-number">
             {q.topic.toUpperCase()} · {q.difficulty.toUpperCase()}

@@ -173,7 +173,11 @@ export type PracticeScope =
   | { mode: 'topic'; topics: string[] }
   | { mode: 'unit'; units: string[] }
   | { mode: 'multi-unit'; units: string[] }
-  | { mode: 'custom'; topics: string[]; units: string[] };
+  | { mode: 'custom'; topics: string[]; units: string[] }
+  // A fixed, pre-baked 100-question worksheet — same seeded shuffle every
+  // time, matching the "Practice Sets" feature from the original kundan_quiz/
+  // quiz-ITI apps. `setNumber` is 1-indexed, matching their "Set N" labeling.
+  | { mode: 'set'; setNumber: number };
 
 // One finished quiz/course/live-test run, saved so history/review/leaderboard
 // have a real record to read from instead of recomputing from nothing.
