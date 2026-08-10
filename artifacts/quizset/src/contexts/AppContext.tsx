@@ -174,6 +174,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return allTenants.find((t) => t.id === user.tenantId) || NO_TENANT;
   }, [allTenants, user?.tenantId]);
 
+  // Keeps `allTenants` (and therefore `tenant`/`hasTenant`) correct for a
+  // REAL coaching/student session. `GET /api/tenants` (the full list
+  // `refreshTenants` below reloads) is platform-owner-only — a coaching or
+  // student caller gets a 403 — so `allTenants` never actually contained
+  // this session's own tenant, and `tenant` silently fell back to NO_TENANT
+  // even once `user.tenantId` was the correct real UUID. That made
+  // `hasTenant` false forever, which is what kept re-bouncing an
+  // already-joined student back to /student/join. Fetching just this one
+  // tenant (allowed for any authenticated role on their own tenantId, per
+  // the api-server's access rules) and merging it in fixes that without
+  // needing platform-only access.
+  useEffect(() => {
+    if (!hasRealSession.current || !user?.tenantId) return;
+    if (allTenants.some((t) => t.id === user.tenantId)) return;
+    let cancelled = false;
+    (async () => {
+      const { tenantService } = await import('@/services/api');
+      const real = await tenantService.get(user.tenantId!);
+      if (!cancelled && real) setAllTenants((prev) => [...prev.filter((t) => t.id !== real.id), real]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.tenantId, allTenants]);
+
   // Real white-label repaint: every component that reads hsl(var(--primary))
   // (buttons, badges, charts, accents — see index.css) picks this up
   // instantly. Only coaching/student sessions are ever branded; the platform
@@ -208,6 +233,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
   const refreshTenants = async () => {
+    // A real session can only ever refresh ITS OWN tenant (`GET /api/tenants`
+    // is platform-owner-only) — re-fetch just that one row instead of the
+    // mock full-list call, which never reflected real saves anyway.
+    if (hasRealSession.current) {
+      if (!user?.tenantId) return;
+      const { tenantService } = await import('@/services/api');
+      const real = await tenantService.get(user.tenantId);
+      if (real) setAllTenants((prev) => [...prev.filter((t) => t.id !== real.id), real]);
+      return;
+    }
     const { tenantService } = await import('@/services/mock');
     setAllTenants(await tenantService.list());
   };
