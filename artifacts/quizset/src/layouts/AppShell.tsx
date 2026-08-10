@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'wouter';
-import { Bell, BookOpen, Building2, ChevronDown, CircleHelp, CreditCard, Gauge, GraduationCap, Menu, Palette, Play, Settings, Sparkles, Users, X } from 'lucide-react';
+import { Award, Bell, BookOpen, Building2, ChevronDown, CircleHelp, CreditCard, Gauge, GraduationCap, Menu, MessageSquareQuote, Palette, Play, Settings, Sparkles, Users, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 
@@ -14,15 +14,16 @@ const platformNav = [
   ['/platform/coachings', 'Coachings', Building2],
   ['/platform/question-requests', 'Question Requests', BookOpen],
   ['/platform/question-banks', 'Question Banks', BookOpen],
-  ['/platform/exams', 'Exams', GraduationCap],
+  ['/platform/courses', 'Courses', GraduationCap],
   ['/platform/payments', 'Payments', CreditCard],
+  ['/platform/testimonials', 'Testimonials', MessageSquareQuote],
   ['/platform/notifications', 'Notifications', Bell],
   ['/platform/settings', 'Settings', Settings],
 ] as const;
 
 const coachingNav = [
   ['/coaching/dashboard', 'Dashboard', Gauge],
-  ['/coaching/exams', 'Exams', GraduationCap],
+  ['/coaching/courses', 'Courses', GraduationCap],
   ['/coaching/live-tests', 'Live Tests', Play],
   ['/coaching/students', 'Students', Users],
   ['/coaching/question-banks', 'Question Banks', BookOpen],
@@ -35,10 +36,11 @@ const coachingNav = [
 
 const studentNav = [
   ['/student/dashboard', 'Overview', Gauge],
-  ['/student/exams', 'Exam library', BookOpen],
+  ['/student/courses', 'Course library', BookOpen],
   ['/student/live-tests', 'Live Tests', Play],
   ['/student/results', 'Results', GraduationCap],
   ['/student/ai', 'Study companion', Sparkles],
+  ['/student/certificates', 'Certificates', Award],
   ['/student/notifications', 'Notifications', Bell],
   ['/student/profile', 'Profile', Settings],
 ] as const;

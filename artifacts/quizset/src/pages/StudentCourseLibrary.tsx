@@ -1,70 +1,64 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, BookOpen, CheckCircle2, Eye, FileText, Lock, Play, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Eye, FileText, ListTree, Lock, Play, Sparkles } from 'lucide-react';
 import { Link, useRoute } from 'wouter';
 import { Badge, Button, Card, Modal, PageHeader, Skeleton } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { examService, ExamWithCount, paymentService, questionService } from '@/services/mock';
+import { courseService, CourseWithCount, paymentService, questionService } from '@/services/api';
 import { Question } from '@/types';
 import { formatRupees } from '@/lib/format';
 
 // ------------------------------------------------------------------ library
-export function StudentExams() {
+export function StudentCourses() {
   const { tenant, tenantId, user } = useApp();
-  const [items, setItems] = useState<ExamWithCount[] | null>(null);
+  const [items, setItems] = useState<CourseWithCount[] | null>(null);
 
   useEffect(() => {
-    if (tenantId && user) examService.listForStudent(tenantId, user.id).then((all) => setItems(all.filter((e) => e.status === 'Published')));
+    if (tenantId && user) courseService.listForStudent(tenantId, user.id).then((all) => setItems(all.filter((c) => c.status === 'Published')));
   }, [tenantId, user]);
 
   if (!items) return <Skeleton className="skeleton-page" />;
 
   return (
     <>
-      <PageHeader eyebrow={tenant.name} title="Exam library" description="A focused set of assessments for your next step." />
+      <PageHeader eyebrow={tenant.name} title="Course library" description="A focused set of courses for your next step." />
       <div className="exam-grid">
-        {items.map((e) => (
-          <StudentMarketCard exam={e} key={e.id} />
+        {items.map((c) => (
+          <StudentMarketCard course={c} key={c.id} />
         ))}
       </div>
     </>
   );
 }
 
-function StudentMarketCard({ exam }: { exam: ExamWithCount }) {
+function StudentMarketCard({ course }: { course: CourseWithCount }) {
   const { user } = useApp();
-  const purchased = exam.sale === 0 || (user ? paymentService.hasPurchased(user.id, 'exam', exam.id) : false);
+  const purchased = course.sale === 0 || (user ? paymentService.hasPurchased(user.id, 'course', course.id) : false);
   return (
     <Card className="exam-card market-card">
       <div className="exam-accent" />
       <div className="market-top">
-        <Badge tone={purchased ? 'success' : 'info'}>{purchased ? (exam.sale === 0 ? 'FREE' : 'PURCHASED') : 'AVAILABLE'}</Badge>
+        <Badge tone={purchased ? 'success' : 'info'}>{purchased ? (course.sale === 0 ? 'FREE' : 'PURCHASED') : 'AVAILABLE'}</Badge>
       </div>
-      <h3>{exam.name}</h3>
-      <p>{exam.subject}</p>
+      <h3>{course.name}</h3>
+      <p>{course.subject}</p>
       <div className="exam-meta">
         <span>
           <FileText size={12} />
-          {exam.questionCount} questions
+          {course.questionCount} questions
         </span>
-        {exam.type !== 'Practice Quiz' && (
-          <span>
-            <Play size={12} />
-            {exam.duration} minutes
-          </span>
-        )}
       </div>
       <div className="price">
-        <strong>{exam.sale ? formatRupees(exam.sale) : 'Free'}</strong>
-        {exam.mrp > exam.sale && (
+        <strong>{course.sale ? formatRupees(course.sale) : 'Free'}</strong>
+        {course.mrp > course.sale && (
           <>
-            <del>{formatRupees(exam.mrp)}</del>
-            <i>Save {Math.round(((exam.mrp - exam.sale) / exam.mrp) * 100)}%</i>
+            <del>{formatRupees(course.mrp)}</del>
+            <i>Save {Math.round(((course.mrp - course.sale) / course.mrp) * 100)}%</i>
           </>
         )}
       </div>
       <div className="market-actions">
-        <Link href={`/student/exams/${exam.id}`} className="btn btn-ghost" style={{ width: '100%' }}>
-          View exam <ArrowRight size={14} />
+        <Link href={`/student/courses/${course.id}`} className="btn btn-ghost" style={{ width: '100%' }}>
+          View course <ArrowRight size={14} />
         </Link>
       </div>
     </Card>
@@ -72,25 +66,25 @@ function StudentMarketCard({ exam }: { exam: ExamWithCount }) {
 }
 
 // ------------------------------------------------------------------- detail
-export function ExamDetail() {
-  const [, params] = useRoute('/student/exams/:id');
+export function CourseDetail() {
+  const [, params] = useRoute('/student/courses/:id');
   const { user, toast } = useApp();
-  const [exam, setExam] = useState<ExamWithCount | null>(null);
+  const [course, setCourse] = useState<CourseWithCount | null>(null);
   const [pay, setPay] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    if (params?.id) examService.getWithCount(params.id).then((e) => setExam(e || null));
+    if (params?.id) courseService.getWithCount(params.id).then((c) => setCourse(c || null));
   }, [params?.id]);
 
-  if (!exam || !user) return <Skeleton className="skeleton-page" />;
+  if (!course || !user) return <Skeleton className="skeleton-page" />;
 
-  const purchased = exam.sale === 0 || paymentService.hasPurchased(user.id, 'exam', exam.id);
+  const purchased = course.sale === 0 || paymentService.hasPurchased(user.id, 'course', course.id);
 
   const buy = async () => {
     setProcessing(true);
-    const tx = await paymentService.purchase({ tenantId: exam.tenantId, studentId: user.id, kind: 'exam', refId: exam.id, label: exam.name, amount: exam.sale });
+    const tx = await paymentService.purchase({ tenantId: course.tenantId, studentId: user.id, kind: 'course', refId: course.id, label: course.name, amount: course.sale });
     setProcessing(false);
     setDone(true);
     toast('Payment successful', `Transaction ${tx.id} saved to your account.`);
@@ -99,11 +93,11 @@ export function ExamDetail() {
   return (
     <>
       <PageHeader
-        eyebrow="Exam details"
-        title={exam.name}
-        description={exam.description || 'A clear preview before you commit your focus.'}
+        eyebrow="Course details"
+        title={course.name}
+        description={course.description || 'A clear preview before you commit your focus.'}
         action={
-          <Link href="/student/exams" className="btn btn-ghost">
+          <Link href="/student/courses" className="btn btn-ghost">
             <ArrowLeft size={14} /> Back to library
           </Link>
         }
@@ -111,73 +105,76 @@ export function ExamDetail() {
       <div className="exam-detail-grid">
         <Card className="exam-detail-hero">
           <Badge tone={purchased ? 'success' : 'info'}>{purchased ? 'UNLOCKED' : 'AVAILABLE'}</Badge>
-          <h2>{exam.name}</h2>
-          <p>{exam.subject}</p>
+          <h2>{course.name}</h2>
+          <p>{course.subject}</p>
           <div className="detail-metrics">
             <div>
-              <b>{exam.questionCount}</b>
+              <b>{course.questionCount}</b>
               <small>Questions</small>
             </div>
             <div>
-              <b>{exam.type === 'Practice Quiz' ? 'No timer' : `${exam.duration} min`}</b>
-              <small>{exam.type === 'Practice Quiz' ? 'Practice mode' : 'Duration'}</small>
+              <b>No timer</b>
+              <small>Practice at your own pace</small>
             </div>
             <div>
-              <b>{exam.preview}</b>
+              <b>{course.preview}</b>
               <small>Free preview</small>
             </div>
           </div>
           <div className="detail-cta">
             {purchased ? (
-              <Link href={exam.type === 'Practice Quiz' ? `/student/exams/${exam.id}/setup` : `/student/exams/${exam.id}/attempt`} className="btn btn-primary">
-                <Play size={15} /> {exam.type === 'Practice Quiz' ? 'Start practice' : 'Start full exam'}
+              <Link href={`/student/courses/${course.id}/setup`} className="btn btn-primary">
+                <Play size={15} /> Start practice
               </Link>
             ) : (
               <>
-                {exam.preview > 0 && (
-                  <Link href={`/student/exams/${exam.id}/preview`} className="btn btn-ghost">
+                {course.preview > 0 && (
+                  <Link href={`/student/courses/${course.id}/preview`} className="btn btn-ghost">
                     <Eye size={15} /> Try free preview
                   </Link>
                 )}
                 <Button onClick={() => setPay(true)}>
-                  <Lock size={14} /> Unlock for {formatRupees(exam.sale)}
+                  <Lock size={14} /> Unlock for {formatRupees(course.sale)}
                 </Button>
               </>
             )}
+            <Link href={`/student/courses/${course.id}/syllabus`} className="btn btn-ghost">
+              <ListTree size={15} /> Syllabus
+            </Link>
           </div>
         </Card>
         <Card>
           <div className="card-title">
             <div>
               <h2>What you'll practise</h2>
-              <p>Built for focused improvement</p>
+              <p>Topic-wise, Unit-wise, Multi-unit or Custom — pick your scope each time you practise</p>
             </div>
           </div>
           <div className="ai-box">
             <Sparkles size={17} />
-            <p>{exam.preview > 0 && !purchased ? 'Start with the free preview. It covers the question style and difficulty you’ll see in the full test.' : 'Answer at a comfortable pace and review the explanation after every question you get wrong.'}</p>
+            <p>{course.preview > 0 && !purchased ? 'Start with the free preview. It covers the question style and difficulty you’ll see in the full course.' : 'Choose a practice mode, answer at a comfortable pace, and review the explanation after every question you get wrong.'}</p>
           </div>
         </Card>
       </div>
       {pay && (
-        <Modal title={done ? 'Payment complete' : 'Unlock your exam'} onClose={() => !processing && setPay(false)}>
+        <Modal title={done ? 'Payment complete' : 'Unlock your course'} onClose={() => !processing && setPay(false)}>
           {done ? (
             <div className="success-panel">
               <CheckCircle2 size={30} />
-              <h3>Your full exam is unlocked.</h3>
+              <h3>Your course is unlocked.</h3>
               <p>Payment simulated successfully.</p>
-              <Link href={exam.type === 'Practice Quiz' ? `/student/exams/${exam.id}/setup` : `/student/exams/${exam.id}/attempt`} className="btn btn-primary">
-                Start exam
+              <Link href={`/student/courses/${course.id}/setup`} className="btn btn-primary">
+                Start practice
               </Link>
             </div>
           ) : (
             <>
               <div className="payment-summary">
-                <span>{exam.name}</span>
-                <b>{formatRupees(exam.sale)}</b>
-                {exam.mrp > exam.sale && (
+                <span>{course.name}</span>
+                <b>{formatRupees(course.sale)}</b>
+                {course.mrp > course.sale && (
                   <small>
-                    Original price {formatRupees(exam.mrp)} · {Math.round(((exam.mrp - exam.sale) / exam.mrp) * 100)}% saved
+                    Original price {formatRupees(course.mrp)} · {Math.round(((course.mrp - course.sale) / course.mrp) * 100)}% saved
                   </small>
                 )}
               </div>
@@ -208,23 +205,23 @@ export function ExamDetail() {
 
 // ------------------------------------------------------------------ preview
 export function Preview() {
-  const [, params] = useRoute('/student/exams/:id/preview');
-  const [exam, setExam] = useState<ExamWithCount | null>(null);
+  const [, params] = useRoute('/student/courses/:id/preview');
+  const [course, setCourse] = useState<CourseWithCount | null>(null);
   const [questions, setQuestions] = useState<Question[] | null>(null);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
 
   useEffect(() => {
     if (!params?.id) return;
-    examService.getWithCount(params.id).then(async (e) => {
-      if (!e) return;
-      setExam(e);
-      const all = await questionService.listByExam(e.id);
-      setQuestions(all.slice(0, e.preview));
+    courseService.getWithCount(params.id).then(async (c) => {
+      if (!c) return;
+      setCourse(c);
+      const all = await questionService.listByCourse(c.id);
+      setQuestions(all.slice(0, c.preview));
     });
   }, [params?.id]);
 
-  if (!exam || !questions) return <Skeleton className="skeleton-page" />;
+  if (!course || !questions) return <Skeleton className="skeleton-page" />;
   if (questions.length === 0) return <div className="exam-interface" />;
 
   const q = questions[index];
@@ -233,7 +230,7 @@ export function Preview() {
     <div className="exam-interface">
       <div className="exam-top">
         <div>
-          <h1>{exam.name}</h1>
+          <h1>{course.name}</h1>
           <p>
             Free preview · {index + 1} of {questions.length} questions
           </p>
@@ -245,10 +242,10 @@ export function Preview() {
           <Sparkles size={16} />
           <span>
             <b>You're exploring the first {questions.length} questions for free.</b>
-            <small>Unlock the full exam whenever you're ready.</small>
+            <small>Unlock the full course whenever you're ready.</small>
           </span>
-          <Link href={`/student/exams/${exam.id}`} className="btn btn-secondary">
-            View full exam
+          <Link href={`/student/courses/${course.id}`} className="btn btn-secondary">
+            View full course
           </Link>
         </div>
         <Card className="preview-question">
@@ -277,7 +274,7 @@ export function Preview() {
               Previous
             </Button>
             {index === questions.length - 1 ? (
-              <Link href={`/student/exams/${exam.id}`} className="btn btn-primary">
+              <Link href={`/student/courses/${course.id}`} className="btn btn-primary">
                 Finish preview <ArrowRight size={14} />
               </Link>
             ) : (

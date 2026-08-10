@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { CreditCard } from 'lucide-react';
 import { Badge, Card, EmptyState, PageHeader, Skeleton, Stat } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { paymentService, tenantService } from '@/services/mock';
+import { paymentService, tenantService } from '@/services/api';
 import { Tenant, Transaction } from '@/types';
 import { formatRupees } from '@/lib/format';
 
-const KIND_LABEL: Record<Transaction['kind'], string> = { exam: 'Exam access', live_test: 'Live test', chatbot: 'AI assistant' };
+const KIND_LABEL: Record<Transaction['kind'], string> = { course: 'Course access', live_test: 'Live test', chatbot: 'AI assistant' };
 
 export function PaymentsPage({ scope = 'coaching' }: { scope?: 'coaching' | 'platform' }) {
   const { tenantId } = useApp();
@@ -31,7 +31,7 @@ export function PaymentsPage({ scope = 'coaching' }: { scope?: 'coaching' | 'pla
 
   return (
     <>
-      <PageHeader eyebrow="Money in" title="Payments" description={scope === 'platform' ? 'Every transaction collected across the network.' : 'Track exam, live test and chatbot revenue.'} />
+      <PageHeader eyebrow="Money in" title="Payments" description={scope === 'platform' ? 'Every transaction collected across the network.' : 'Track course, live test and chatbot revenue.'} />
       <div className="stats-grid">
         <Stat label="Today" value={formatRupees(today)} icon={<CreditCard />} />
         <Stat label="Total collected" value={formatRupees(total)} icon={<CreditCard />} />
@@ -39,14 +39,14 @@ export function PaymentsPage({ scope = 'coaching' }: { scope?: 'coaching' | 'pla
       </div>
       {rows.length === 0 ? (
         <Card>
-          <EmptyState title="No transactions yet" description="Payments will show up here as students purchase exams, live tests or the AI assistant." />
+          <EmptyState title="No transactions yet" description="Payments will show up here as students purchase courses, live tests or the AI assistant." />
         </Card>
       ) : (
         <>
           <Card className="filter-bar">
             <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value)}>
               <option value="All">All products</option>
-              <option value="exam">Exam access</option>
+              <option value="course">Course access</option>
               <option value="live_test">Live test</option>
               <option value="chatbot">AI assistant</option>
             </select>

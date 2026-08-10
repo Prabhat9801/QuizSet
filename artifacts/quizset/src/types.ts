@@ -23,26 +23,29 @@ export type Tenant = {
   supportEmail: string;
 };
 
-export type ExamType = 'Practice Quiz' | 'Mock Test' | 'Live Test' | 'Previous Year' | 'Topic-wise';
-
-export type Exam = {
+// A coaching's exam-preparation offering — e.g. "SSC CGL 2026 preparation".
+// Not a single sitting and not typed as one mode: every course gets the
+// SAME complete practice system (Topic-wise/Unit-wise/Multi-unit/Custom/Full,
+// via QuizSetup), always untimed and personal to each student. A course has
+// no timer of its own — a coaching that wants a timed, scheduled, one-shot
+// experience creates a LiveTest linked to the course instead; that's a
+// deliberately separate feature, not a course "type".
+export type Course = {
   id: string;
   tenantId: string;
   questionBankId: string;
   name: string;
   description?: string;
-  type: ExamType;
-  duration: number; // minutes
   mrp: number;
   sale: number;
   preview: number; // free preview question count
   status: 'Published' | 'Draft' | 'Upcoming' | 'Archived';
   students: number;
   subject: string;
-  // Which students can see this exam. Empty array = every student in the
+  // Which students can see this course. Empty array = every student in the
   // tenant (the default, matching LiveTest.participantIds' convention) —
-  // a coaching only needs to fill this in when it wants to restrict an exam
-  // to specific students rather than its whole roster.
+  // a coaching only needs to fill this in when it wants to restrict a course
+  // to specific, approved students rather than its whole roster.
   assignedStudentIds: string[];
 };
 
@@ -53,7 +56,7 @@ export type Student = {
   phone: string;
   tenantId: string;
   status: 'Active' | 'Pending' | 'Suspended';
-  exams: number;
+  courses: number;
   score: number;
   joined: string;
 };
@@ -74,17 +77,17 @@ export type Question = {
   difficulty: 'Easy' | 'Medium' | 'Hard';
 };
 
-// A question bank is what a question-bank request eventually produces. An
-// exam always draws its question set from exactly one bank.
+// A question bank is what a question-bank request eventually produces. A
+// course always draws its question set from exactly one bank.
 //
 // Status is a content-review pipeline, not just a build-progress tracker:
 //   Generating       -> only the platform owner can see it (being written)
 //   Platform Review  -> platform owner is checking it; still invisible to
 //                       the coaching that asked for it
 //   Coaching Review  -> now visible to the coaching owner, who can view AND
-//                       edit every question — but an exam using this bank
+//                       edit every question — but a course using this bank
 //                       still cannot be published; students see nothing yet
-//   Finalized        -> the coaching owner explicitly approved it; an exam
+//   Finalized        -> the coaching owner explicitly approved it; a course
 //                       using this bank may now be published
 export type QuestionBankStatus = 'Generating' | 'Platform Review' | 'Coaching Review' | 'Finalized';
 
@@ -104,13 +107,13 @@ export type QuestionBank = {
 export type RequestStatus = 'Pending' | 'In Progress' | 'Finalized';
 
 // A coaching's ask to the platform owner: "build me a question bank for this
-// exam." Mirrors the syllabus_requests concept from the real backend — this
+// course." Mirrors the syllabus_requests concept from the real backend — this
 // is the frontend-only stand-in for that same workflow.
 export type QuestionBankRequest = {
   id: string;
   tenantId: string;
-  examId: string; // the real, already-created exam this bank is for
-  examName: string; // denormalized at request time, so lists don't need an extra lookup
+  courseId: string; // the real, already-created course this bank is for
+  courseName: string; // denormalized at request time, so lists don't need an extra lookup
   subjects: string[];
   questionsRequired: number;
   difficulty: string;
@@ -147,7 +150,7 @@ export type JoinRequest = {
 export type LiveTest = {
   id: string;
   tenantId: string;
-  examId: string; // question source
+  courseId: string; // question source
   name: string;
   scheduledStart: string; // ISO
   scheduledEnd: string; // ISO
@@ -172,13 +175,13 @@ export type PracticeScope =
   | { mode: 'multi-unit'; units: string[] }
   | { mode: 'custom'; topics: string[]; units: string[] };
 
-// One finished quiz/exam/live-test run, saved so history/review/leaderboard
+// One finished quiz/course/live-test run, saved so history/review/leaderboard
 // have a real record to read from instead of recomputing from nothing.
 export type Attempt = {
   id: string;
   studentId: string;
   tenantId: string;
-  examId: string;
+  courseId: string;
   liveTestId?: string;
   mode: 'practice' | 'timed';
   practiceScope?: PracticeScope; // only set for mode: 'practice'
@@ -200,7 +203,7 @@ export type ChatbotConfig = {
   systemPrompt: string;
 };
 
-export type PaymentKind = 'exam' | 'live_test' | 'chatbot';
+export type PaymentKind = 'course' | 'live_test' | 'chatbot';
 
 // A single simulated Razorpay-style transaction. Both Payments pages
 // (platform + coaching) and the revenue stat tiles read from this list
@@ -210,7 +213,7 @@ export type Transaction = {
   tenantId: string;
   studentId: string;
   kind: PaymentKind;
-  refId: string; // examId or liveTestId
+  refId: string; // courseId or liveTestId
   label: string;
   amount: number;
   status: 'Success' | 'Pending' | 'Failed';
@@ -228,3 +231,74 @@ export type Notification = {
 };
 
 export type Toast = { id: number; title: string; description?: string; tone?: 'success' | 'danger' | 'info' };
+
+// One unit's target completion date inside a course's study plan.
+export type StudyPlanItem = {
+  id: string;
+  studyPlanId: string;
+  unit: string;
+  targetDate: string; // ISO date (yyyy-mm-dd)
+};
+
+// A coaching's schedule for finishing one course's syllabus — one plan per
+// course. `mode: 'manual'` means the coaching set each item's targetDate
+// directly; `mode: 'auto'` means the API evenly distributed every unit across
+// [startDate, endDate] and stored the result as ordinary items, so readers
+// never need to re-derive anything — they just read `items`.
+export type StudyPlan = {
+  id: string;
+  tenantId: string;
+  courseId: string;
+  mode: 'manual' | 'auto';
+  startDate?: string;
+  endDate?: string;
+  items: StudyPlanItem[];
+};
+
+// Derived, never stored — always computed from `targetDate` vs. today at
+// read time so it can't go stale. "Due now" covers today through 2 days
+// past target; beyond that (with no activity signal available) it's
+// "Overdue". A target date still in the future is "Upcoming".
+export type StudyPlanItemStatus = 'Upcoming' | 'Due now' | 'Overdue';
+
+// Manually issued by a coaching owner — never automatic on some completion
+// threshold. Branding is snapshotted at issue time (name/logo/color) so a
+// later rebrand never retroactively changes a certificate already handed
+// out, and every certificate also carries a static "Powered by QuizSet"
+// mark (rendered by the certificate view, not stored here). studentName and
+// courseName are denormalized at issue time too, matching the same pattern
+// QuestionBankRequest.courseName already uses in this file.
+export type Certificate = {
+  id: string;
+  studentId: string;
+  studentName: string;
+  courseId: string;
+  courseName: string;
+  tenantId: string;
+  certificateCode: string; // short, unique — what the public /certificate/:code route reads by
+  coachingNameSnapshot: string;
+  coachingLogoUrlSnapshot?: string;
+  coachingThemeColorSnapshot: string;
+  note?: string;
+  issuedAt: string;
+};
+
+// A student's story about their coaching/course. Only becomes public (shown
+// on the coaching's own context AND, conceptually, QuizSet's own landing
+// page) once BOTH gates are true — two separate, sequential approvals, not
+// one combined flag.
+export type Testimonial = {
+  id: string;
+  studentId: string;
+  studentName: string;
+  tenantId: string;
+  courseId?: string;
+  courseName?: string;
+  content: string;
+  outcome?: string;
+  coachingApproved: boolean;
+  coachingApprovedAt?: string;
+  platformApproved: boolean;
+  platformApprovedAt?: string;
+  createdAt: string;
+};

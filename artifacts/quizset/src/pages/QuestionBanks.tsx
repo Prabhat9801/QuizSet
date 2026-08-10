@@ -3,8 +3,8 @@ import { Link, useSearch } from 'wouter';
 import { BookOpen, Check, FileUp, Plus } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, Field, Modal, PageHeader } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { examService, questionBankService, questionBankRequestService, tenantService } from '@/services/mock';
-import { Exam, QuestionBank, QuestionBankRequest, QuestionBankStatus, Tenant } from '@/types';
+import { courseService, questionBankService, questionBankRequestService, tenantService } from '@/services/api';
+import { Course, QuestionBank, QuestionBankRequest, QuestionBankStatus, Tenant } from '@/types';
 
 const BANK_TONE: Record<QuestionBankStatus, 'neutral' | 'info' | 'warning' | 'success'> = {
   Generating: 'neutral',
@@ -13,7 +13,7 @@ const BANK_TONE: Record<QuestionBankStatus, 'neutral' | 'info' | 'warning' | 'su
   Finalized: 'success',
 };
 
-const BLANK_FORM = { examId: '', subjects: '', questionsRequired: '100', difficulty: 'Easy + Medium + Hard', priority: 'Medium' as QuestionBankRequest['priority'], notes: '', unitsTopics: '', fileName: '' };
+const BLANK_FORM = { courseId: '', subjects: '', questionsRequired: '100', difficulty: 'Easy + Medium + Hard', priority: 'Medium' as QuestionBankRequest['priority'], notes: '', unitsTopics: '', fileName: '' };
 
 /**
  * `scope="platform"` shows every coaching's banks, including ones still in
@@ -26,7 +26,7 @@ export function QuestionBanks({ scope = 'coaching' }: { scope?: 'coaching' | 'pl
   const search = new URLSearchParams(useSearch());
   const [banks, setBanks] = useState<QuestionBank[] | null>(null);
   const [requests, setRequests] = useState<QuestionBankRequest[]>([]);
-  const [exams, setExams] = useState<Exam[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(BLANK_FORM);
@@ -35,15 +35,15 @@ export function QuestionBanks({ scope = 'coaching' }: { scope?: 'coaching' | 'pl
 
   const load = useCallback(async () => {
     const scopedTenantId = scope === 'coaching' ? tenantId ?? undefined : undefined;
-    const [bankList, requestList, examList, tenantList] = await Promise.all([
+    const [bankList, requestList, courseList, tenantList] = await Promise.all([
       scope === 'coaching' && tenantId ? questionBankService.listVisibleToCoaching(tenantId) : questionBankService.list(scopedTenantId),
       questionBankRequestService.list(scopedTenantId),
-      scope === 'coaching' && tenantId ? examService.list(tenantId) : Promise.resolve([]),
+      scope === 'coaching' && tenantId ? courseService.list(tenantId) : Promise.resolve([]),
       scope === 'platform' ? tenantService.list() : Promise.resolve([]),
     ]);
     setBanks(bankList);
     setRequests(requestList);
-    setExams(examList);
+    setCourses(courseList);
     setTenants(tenantList);
   }, [scope, tenantId]);
 
@@ -51,11 +51,11 @@ export function QuestionBanks({ scope = 'coaching' }: { scope?: 'coaching' | 'pl
     load();
   }, [load]);
 
-  // Arriving from an exam's own "Request question bank" button pre-selects that exam.
+  // Arriving from a course's own "Request question bank" button pre-selects that course.
   useEffect(() => {
-    const examIdParam = search.get('examId');
-    if (examIdParam) {
-      setForm((f) => ({ ...f, examId: examIdParam }));
+    const courseIdParam = search.get('courseId');
+    if (courseIdParam) {
+      setForm((f) => ({ ...f, courseId: courseIdParam }));
       setOpen(true);
     }
   }, [search]);
@@ -63,12 +63,12 @@ export function QuestionBanks({ scope = 'coaching' }: { scope?: 'coaching' | 'pl
   const tenantName = (id: string) => tenants.find((t) => t.id === id)?.name || id;
 
   const submitRequest = async () => {
-    const exam = exams.find((e) => e.id === form.examId);
-    if (!exam || !tenantId) return;
+    const course = courses.find((c) => c.id === form.courseId);
+    if (!course || !tenantId) return;
     await questionBankRequestService.create({
       tenantId,
-      examId: exam.id,
-      examName: exam.name,
+      courseId: course.id,
+      courseName: course.name,
       subjects: form.subjects.split(',').map((s) => s.trim()).filter(Boolean),
       questionsRequired: Number(form.questionsRequired) || 50,
       difficulty: form.difficulty,
@@ -86,7 +86,7 @@ export function QuestionBanks({ scope = 'coaching' }: { scope?: 'coaching' | 'pl
   const finalize = async (bank: QuestionBank) => {
     await questionBankService.finalize(bank.id);
     await load();
-    toast('Bank finalized', `${bank.name} is approved — exams using it can now be published.`);
+    toast('Bank finalized', `${bank.name} is approved — courses using it can now be published.`);
   };
 
   if (!banks) return null;
@@ -103,30 +103,30 @@ export function QuestionBanks({ scope = 'coaching' }: { scope?: 'coaching' | 'pl
       <PageHeader
         eyebrow="Content system"
         title="Question banks"
-        description={scope === 'platform' ? 'Every question bank across the QuizSet network, at every review stage.' : 'Banks ready to review or power your exams, and requests in progress.'}
+        description={scope === 'platform' ? 'Every question bank across the QuizSet network, at every review stage.' : 'Banks ready to review or power your courses, and requests in progress.'}
         action={
           scope === 'coaching' ? (
-            <Button onClick={() => setOpen(true)} disabled={exams.length === 0}>
+            <Button onClick={() => setOpen(true)} disabled={courses.length === 0}>
               <Plus size={15} /> Request a question bank
             </Button>
           ) : undefined
         }
       />
-      {scope === 'coaching' && exams.length === 0 && <div className="alert alert-warning">Create an exam first — a question-bank request is always for a specific exam.</div>}
+      {scope === 'coaching' && courses.length === 0 && <div className="alert alert-warning">Create a course first — a question-bank request is always for a specific course.</div>}
 
       {scope === 'coaching' && inProgress.length > 0 && (
         <Card className="request-inline-list">
           <div className="card-title">
             <div>
               <h2>Requests in progress</h2>
-              <p>Not usable in an exam yet — you'll see them below once they reach Coaching Review.</p>
+              <p>Not usable in a course yet — you'll see them below once they reach Coaching Review.</p>
             </div>
           </div>
           {inProgress.map((r) => (
             <div className="activity" key={r.id}>
               <span className="activity-dot" />
               <div>
-                <b>{r.examName}</b>
+                <b>{r.courseName}</b>
                 <small>{r.status === 'Pending' ? 'Waiting for the platform team to start' : 'Platform team is working on it'}</small>
               </div>
             </div>
@@ -139,7 +139,7 @@ export function QuestionBanks({ scope = 'coaching' }: { scope?: 'coaching' | 'pl
           <EmptyState
             title="No question banks yet"
             description={scope === 'coaching' ? 'Request one — the platform team will build it from your syllabus.' : 'No banks exist across the network yet.'}
-            action={scope === 'coaching' && exams.length > 0 ? <Button onClick={() => setOpen(true)}>Request a question bank</Button> : undefined}
+            action={scope === 'coaching' && courses.length > 0 ? <Button onClick={() => setOpen(true)}>Request a question bank</Button> : undefined}
           />
         </Card>
       ) : (
@@ -201,12 +201,12 @@ export function QuestionBanks({ scope = 'coaching' }: { scope?: 'coaching' | 'pl
             setForm(BLANK_FORM);
           }}
         >
-          <Field label="Exam this is for" required>
-            <select value={form.examId} onChange={(e) => setForm({ ...form, examId: e.target.value })}>
-              <option value="">Choose an exam</option>
-              {exams.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
+          <Field label="Course this is for" required>
+            <select value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })}>
+              <option value="">Choose a course</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </select>
@@ -258,7 +258,7 @@ export function QuestionBanks({ scope = 'coaching' }: { scope?: 'coaching' | 'pl
             >
               Cancel
             </Button>
-            <Button onClick={submitRequest} disabled={!form.examId}>
+            <Button onClick={submitRequest} disabled={!form.courseId}>
               <BookOpen size={14} /> Send request
             </Button>
           </div>
@@ -271,7 +271,7 @@ export function QuestionBanks({ scope = 'coaching' }: { scope?: 'coaching' | 'pl
 function BankQuestionCount({ bankId }: { bankId: string }) {
   const [count, setCount] = useState<number | null>(null);
   useEffect(() => {
-    import('@/services/mock').then(({ questionService }) => questionService.listByBank(bankId)).then((qs) => setCount(qs.length));
+    import('@/services/api').then(({ questionService }) => questionService.listByBank(bankId)).then((qs) => setCount(qs.length));
   }, [bankId]);
   return <p className="bank-count">{count === null ? 'Loading…' : `${count} question${count === 1 ? '' : 's'}`}</p>;
 }

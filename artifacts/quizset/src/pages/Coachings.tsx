@@ -3,7 +3,7 @@ import { CheckCircle2, Clock3, Edit3, Eye, Pause, Plus, Users } from 'lucide-rea
 import { Link } from 'wouter';
 import { Badge, Button, Card, Field, Modal, PageHeader, Stat } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { examService, paymentService, studentService, tenantService } from '@/services/mock';
+import { courseService, paymentService, studentService, tenantService } from '@/services/api';
 import { Tenant } from '@/types';
 import { formatRupees } from '@/lib/format';
 
@@ -17,7 +17,7 @@ export function Coachings() {
   const { toast, refreshTenants } = useApp();
   const [items, setItems] = useState<Tenant[] | null>(null);
   const [revenueByTenant, setRevenueByTenant] = useState<Record<string, number>>({});
-  const [examCounts, setExamCounts] = useState<Record<string, number>>({});
+  const [courseCounts, setCourseCounts] = useState<Record<string, number>>({});
   const [studentCounts, setStudentCounts] = useState<Record<string, number>>({});
   const [open, setOpen] = useState(false);
   const [created, setCreated] = useState<Tenant | null>(null);
@@ -27,18 +27,18 @@ export function Coachings() {
     const list = await tenantService.list();
     setItems(list);
     const revenue: Record<string, number> = {};
-    const exams: Record<string, number> = {};
+    const courses: Record<string, number> = {};
     const students: Record<string, number> = {};
     for (const t of list) {
       revenue[t.id] = (await paymentService.list(t.id)).filter((tx) => tx.status === 'Success').reduce((sum, tx) => sum + tx.amount, 0);
-      exams[t.id] = (await examService.list(t.id)).length;
+      courses[t.id] = (await courseService.list(t.id)).length;
       // t.students is a static seed number that never moves as students actually
       // join — the real, live count comes from the students list, same as the
       // coaching-owner's own Students page computes it.
       students[t.id] = (await studentService.list(t.id)).length;
     }
     setRevenueByTenant(revenue);
-    setExamCounts(exams);
+    setCourseCounts(courses);
     setStudentCounts(students);
   }, []);
 
@@ -70,7 +70,7 @@ export function Coachings() {
       <PageHeader
         eyebrow="Platform network"
         title="Coachings"
-        description="Manage every institute that trusts QuizSet with their digital exam business."
+        description="Manage every institute that trusts QuizSet with their digital course business."
         action={
           <Button onClick={() => setOpen(true)}>
             <Plus size={15} /> Create coaching
@@ -81,7 +81,7 @@ export function Coachings() {
       <div className="stats-grid">
         <Stat label="Total coachings" value={String(active)} icon={<Users />} />
         <Stat label="Total students across network" value={totalStudents.toLocaleString('en-IN')} icon={<CheckCircle2 />} />
-        <Stat label="Exams published" value={String(Object.values(examCounts).reduce((a, b) => a + b, 0))} icon={<Clock3 />} />
+        <Stat label="Courses published" value={String(Object.values(courseCounts).reduce((a, b) => a + b, 0))} icon={<Clock3 />} />
         <Stat label="Revenue collected" value={formatRupees(Object.values(revenueByTenant).reduce((a, b) => a + b, 0))} icon={<Pause />} />
       </div>
 
@@ -100,7 +100,7 @@ export function Coachings() {
                 <th>Owner</th>
                 <th>Students</th>
                 <th>Plan</th>
-                <th>Exams</th>
+                <th>Courses</th>
                 <th>Revenue</th>
                 <th>Actions</th>
               </tr>
@@ -119,10 +119,10 @@ export function Coachings() {
                   <td>
                     <Badge tone={t.plan === 'Enterprise' ? 'info' : 'neutral'}>{t.plan}</Badge>
                   </td>
-                  <td>{examCounts[t.id] ?? 0}</td>
+                  <td>{courseCounts[t.id] ?? 0}</td>
                   <td>{formatRupees(revenueByTenant[t.id] ?? 0)}</td>
                   <td className="row-actions">
-                    <Link href={`/platform/exams?tenant=${t.id}`}>
+                    <Link href={`/platform/courses?tenant=${t.id}`}>
                       <Eye size={14} />
                     </Link>
                     <button onClick={() => toast('Edit mode ready', 'Connect a backend to persist advanced fields.')}>
@@ -176,7 +176,7 @@ export function Coachings() {
           <div className="success-panel">
             <CheckCircle2 size={27} />
             <h3>{created.name} is ready</h3>
-            <p>Share this join code with students and use the workspace to configure your first exam.</p>
+            <p>Share this join code with students and use the workspace to configure your first course.</p>
             <div className="code-grid">
               <div>
                 <small>COACHING ID</small>

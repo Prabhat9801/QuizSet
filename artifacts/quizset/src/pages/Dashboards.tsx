@@ -3,7 +3,7 @@ import { ArrowUpRight, BookOpen, FileText, IndianRupee, Play, Plus, Sparkles, Us
 import { Link } from 'wouter';
 import { Card, PageHeader, Stat, Badge, Button } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { examService, ExamWithCount, liveTestService, paymentService, questionBankRequestService, studentService, tenantService } from '@/services/mock';
+import { courseService, CourseWithCount, liveTestService, paymentService, questionBankRequestService, studentService, tenantService } from '@/services/api';
 import { formatRupees } from '@/lib/format';
 
 export function PlatformDashboard() {
@@ -65,28 +65,28 @@ export function PlatformDashboard() {
 
 export function CoachingDashboard() {
   const { tenant, tenantId } = useApp();
-  const [exams, setExams] = useState<ExamWithCount[]>([]);
+  const [courses, setCourses] = useState<CourseWithCount[]>([]);
   const [studentCount, setStudentCount] = useState(0);
   const [revenue, setRevenue] = useState(0);
   const [pendingJoinCount, setPendingJoinCount] = useState(0);
 
   useEffect(() => {
     if (!tenantId) return;
-    examService.listWithCounts(tenantId).then(setExams);
+    courseService.listWithCounts(tenantId).then(setCourses);
     studentService.list(tenantId).then((s) => setStudentCount(s.length));
     paymentService.list(tenantId).then((all) => setRevenue(all.filter((t) => t.status === 'Success').reduce((sum, t) => sum + t.amount, 0)));
     liveTestService.list(tenantId).then((tests) => setPendingJoinCount(tests.filter((t) => liveTestService.phase(t) === 'Upcoming').length));
   }, [tenantId]);
 
-  const published = exams.filter((e) => e.status === 'Published').length;
+  const published = courses.filter((c) => c.status === 'Published').length;
 
   return (
     <>
-      <PageHeader eyebrow={`${tenant.name} workspace`} title={`Good morning, ${tenant.owner || tenant.name}`} description="Your academy's exams, students and revenue at a glance." action={<Link href="/coaching/exams/create" className="btn btn-primary"><Plus size={15} /> Create exam</Link>} />
+      <PageHeader eyebrow={`${tenant.name} workspace`} title={`Good morning, ${tenant.owner || tenant.name}`} description="Your academy's courses, students and revenue at a glance." action={<Link href="/coaching/courses/create" className="btn btn-primary"><Plus size={15} /> Create course</Link>} />
       <div className="stats-grid stagger">
         <Stat icon={<IndianRupee size={16} />} label="Revenue" value={formatRupees(revenue)} />
         <Stat icon={<Users />} label="Students" value={String(studentCount)} />
-        <Stat icon={<BookOpen />} label="Published exams" value={String(published)} />
+        <Stat icon={<BookOpen />} label="Published courses" value={String(published)} />
         <Stat icon={<Play />} label="Upcoming live tests" value={String(pendingJoinCount)} />
       </div>
       <Card>
@@ -97,11 +97,11 @@ export function CoachingDashboard() {
           </div>
         </div>
         <div className="quick-actions">
-          <Link href="/coaching/exams/create">
+          <Link href="/coaching/courses/create">
             <Plus size={17} />
             <span>
-              <b>Create exam</b>
-              <small>Configure a new assessment</small>
+              <b>Create course</b>
+              <small>Configure a new course</small>
             </span>
             <ArrowUpRight size={15} />
           </Link>
@@ -125,7 +125,7 @@ export function CoachingDashboard() {
             <BookOpen size={17} />
             <span>
               <b>Request question bank</b>
-              <small>Give your next exam a head start</small>
+              <small>Give your next course a head start</small>
             </span>
             <ArrowUpRight size={15} />
           </Link>
@@ -137,10 +137,10 @@ export function CoachingDashboard() {
 
 export function StudentDashboard() {
   const { user, tenant, tenantId } = useApp();
-  const [exams, setExams] = useState<ExamWithCount[]>([]);
+  const [courses, setCourses] = useState<CourseWithCount[]>([]);
 
   useEffect(() => {
-    if (tenantId) examService.listWithCounts(tenantId).then((all) => setExams(all.filter((e) => e.status === 'Published').slice(0, 3)));
+    if (tenantId) courseService.listWithCounts(tenantId).then((all) => setCourses(all.filter((c) => c.status === 'Published').slice(0, 3)));
   }, [tenantId]);
 
   return (
@@ -154,7 +154,7 @@ export function StudentDashboard() {
             <h1>Good morning, {user?.name?.split(' ')[0] || 'there'}.</h1>
             <p>Small, focused sessions add up. Keep your rhythm today.</p>
             <div className="student-hero-actions">
-              <Link href="/student/exams" className="btn btn-secondary">
+              <Link href="/student/courses" className="btn btn-secondary">
                 Continue learning <ArrowUpRight size={15} />
               </Link>
             </div>
@@ -165,33 +165,33 @@ export function StudentDashboard() {
         <div className="student-main">
           <div className="card-title">
             <div>
-              <h2>Available exams</h2>
+              <h2>Available courses</h2>
               <p>Chosen by {tenant.name} for your path</p>
             </div>
-            <Link href="/student/exams" className="text-link">
+            <Link href="/student/courses" className="text-link">
               View library <ArrowUpRight size={14} />
             </Link>
           </div>
           <div className="exam-grid">
-            {exams.map((e) => (
-              <Card className="exam-card" key={e.id}>
+            {courses.map((c) => (
+              <Card className="exam-card" key={c.id}>
                 <div className="exam-accent" />
-                <Badge tone="info">{e.sale ? 'AVAILABLE' : 'FREE'}</Badge>
-                <h3>{e.name}</h3>
+                <Badge tone="info">{c.sale ? 'AVAILABLE' : 'FREE'}</Badge>
+                <h3>{c.name}</h3>
                 <p>
-                  {tenant.name} · {e.subject}
+                  {tenant.name} · {c.subject}
                 </p>
                 <div className="exam-meta">
                   <span>
                     <FileText size={12} />
-                    {e.questionCount} questions
+                    {c.questionCount} questions
                   </span>
                 </div>
                 <div className="price">
-                  <strong>{e.sale ? formatRupees(e.sale) : 'Free'}</strong>
+                  <strong>{c.sale ? formatRupees(c.sale) : 'Free'}</strong>
                 </div>
-                <Link href={`/student/exams/${e.id}`} className="btn btn-ghost" style={{ width: '100%' }}>
-                  View exam <ArrowUpRight size={14} />
+                <Link href={`/student/courses/${c.id}`} className="btn btn-ghost" style={{ width: '100%' }}>
+                  View course <ArrowUpRight size={14} />
                 </Link>
               </Card>
             ))}

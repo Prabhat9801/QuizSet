@@ -4,8 +4,8 @@ import { Clock3 } from 'lucide-react';
 import { Badge, Card, EmptyState, PageHeader, Skeleton } from '@/components/ui';
 import { TimedQuizRunner } from '@/components/QuizRunner';
 import { useApp } from '@/contexts/AppContext';
-import { attemptService, examService, liveTestService, questionService } from '@/services/mock';
-import { Exam, LiveTest, LiveTestPhase, Question } from '@/types';
+import { attemptService, courseService, liveTestService, questionService } from '@/services/api';
+import { Course, LiveTest, LiveTestPhase, Question } from '@/types';
 import { formatDateTime } from '@/lib/format';
 
 const PHASE_TONE: Record<LiveTestPhase, 'neutral' | 'warning' | 'success' | 'info' | 'danger'> = {
@@ -92,13 +92,13 @@ function LiveTestRow({ test }: { test: LiveTest }) {
   );
 }
 
-/** The actual attempt experience — always timed, sourced from the linked exam's question bank. */
+/** The actual attempt experience — always timed, sourced from the linked course's question bank. */
 export function LiveTestAttempt() {
   const [, params] = useRoute('/student/live-tests/:id/attempt');
   const [, navigate] = useLocation();
   const { user } = useApp();
   const [test, setTest] = useState<LiveTest | null>(null);
-  const [exam, setExam] = useState<Exam | null>(null);
+  const [course, setCourse] = useState<Course | null>(null);
   const [questions, setQuestions] = useState<Question[] | null>(null);
   const [blocked, setBlocked] = useState(false);
 
@@ -116,14 +116,14 @@ export function LiveTestAttempt() {
         return;
       }
       setTest(t);
-      const e = await examService.get(t.examId);
-      setExam(e || null);
-      if (e) setQuestions(await questionService.listByExam(e.id));
+      const c = await courseService.get(t.courseId);
+      setCourse(c || null);
+      if (c) setQuestions(await questionService.listByCourse(c.id));
     });
   }, [params?.id, user, navigate]);
 
   if (blocked) return <div className="exam-interface" />;
-  if (!test || !exam || !questions || !user) return <Skeleton className="skeleton-page" />;
+  if (!test || !course || !questions || !user) return <Skeleton className="skeleton-page" />;
   if (questions.length === 0) return <div className="exam-interface" />;
 
   const msLeftInWindow = new Date(test.scheduledEnd).getTime() - Date.now();
@@ -134,7 +134,7 @@ export function LiveTestAttempt() {
     const attempt = await attemptService.save({
       studentId: user.id,
       tenantId: test.tenantId,
-      examId: exam.id,
+      courseId: course.id,
       liveTestId: test.id,
       mode: 'timed',
       answers,

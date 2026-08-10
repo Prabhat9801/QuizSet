@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { ArrowLeft, Clock3, Play, Plus } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, Field, Modal, PageHeader, Skeleton, Stat } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { examService, liveTestService } from '@/services/mock';
-import { Attempt, Exam, LiveTest, LiveTestPhase } from '@/types';
+import { courseService, liveTestService } from '@/services/api';
+import { Attempt, Course, LiveTest, LiveTestPhase } from '@/types';
 import { formatDateTime, formatRupees } from '@/lib/format';
 
 const PHASE_TONE: Record<LiveTestPhase, 'neutral' | 'warning' | 'success' | 'info' | 'danger'> = {
@@ -17,16 +17,16 @@ const PHASE_TONE: Record<LiveTestPhase, 'neutral' | 'warning' | 'success' | 'inf
 export function LiveTests() {
   const { tenant, tenantId, toast } = useApp();
   const [items, setItems] = useState<LiveTest[] | null>(null);
-  const [exams, setExams] = useState<Exam[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [open, setOpen] = useState(false);
   const [openTest, setOpenTest] = useState<LiveTest | null>(null);
-  const [form, setForm] = useState({ name: '', examId: '', start: '', end: '', duration: '30', price: '0' });
+  const [form, setForm] = useState({ name: '', courseId: '', start: '', end: '', duration: '30', price: '0' });
 
   const load = useCallback(async () => {
     if (!tenantId) return;
-    const [tests, allExams] = await Promise.all([liveTestService.list(tenantId), examService.list(tenantId)]);
+    const [tests, allCourses] = await Promise.all([liveTestService.list(tenantId), courseService.list(tenantId)]);
     setItems(tests);
-    setExams(allExams.filter((e) => e.status === 'Published'));
+    setCourses(allCourses.filter((c) => c.status === 'Published'));
   }, [tenantId]);
 
   useEffect(() => {
@@ -34,10 +34,10 @@ export function LiveTests() {
   }, [load]);
 
   const create = async () => {
-    if (!tenantId || !form.name || !form.examId || !form.start || !form.end) return;
+    if (!tenantId || !form.name || !form.courseId || !form.start || !form.end) return;
     await liveTestService.create({
       tenantId,
-      examId: form.examId,
+      courseId: form.courseId,
       name: form.name,
       scheduledStart: new Date(form.start).toISOString(),
       scheduledEnd: new Date(form.end).toISOString(),
@@ -47,7 +47,7 @@ export function LiveTests() {
     });
     await load();
     setOpen(false);
-    setForm({ name: '', examId: '', start: '', end: '', duration: '30', price: '0' });
+    setForm({ name: '', courseId: '', start: '', end: '', duration: '30', price: '0' });
     toast('Live test created', 'Publish it once you are ready for students to see it.');
   };
 
@@ -70,12 +70,12 @@ export function LiveTests() {
         title="Live tests"
         description="Bring your learners into a shared, time-boxed assessment."
         action={
-          <Button onClick={() => setOpen(true)} disabled={exams.length === 0}>
+          <Button onClick={() => setOpen(true)} disabled={courses.length === 0}>
             <Plus size={15} /> Schedule live test
           </Button>
         }
       />
-      {exams.length === 0 && <div className="alert alert-warning">Publish at least one exam first — a live test always draws its questions from one.</div>}
+      {courses.length === 0 && <div className="alert alert-warning">Publish at least one course first — a live test always draws its questions from one.</div>}
 
       <div className="stats-grid">
         <Stat label="Upcoming" value={String(upcoming)} icon={<Clock3 />} />
@@ -113,12 +113,12 @@ export function LiveTests() {
           <Field label="Test name" required>
             <input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="SSC CGL Grand Test" />
           </Field>
-          <Field label="Question source (exam)" required>
-            <select value={form.examId} onChange={(e) => setForm({ ...form, examId: e.target.value })}>
-              <option value="">Choose an exam</option>
-              {exams.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
+          <Field label="Question source (course)" required>
+            <select value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })}>
+              <option value="">Choose a course</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </select>

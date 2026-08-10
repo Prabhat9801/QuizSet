@@ -3,7 +3,7 @@ import { ArrowRight, BookOpen, FileText, Save } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { Badge, Button, Card, EmptyState, Modal, PageHeader, Tabs } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { questionBankRequestService, tenantService } from '@/services/mock';
+import { questionBankRequestService, tenantService } from '@/services/api';
 import { QuestionBankRequest, RequestStatus, Tenant } from '@/types';
 
 const STAGES: RequestStatus[] = ['Pending', 'In Progress', 'Finalized'];
@@ -21,7 +21,7 @@ const PRIORITY_TONE: Record<QuestionBankRequest['priority'], 'danger' | 'warning
 };
 
 /**
- * Platform-owner side of the exam → question-bank pipeline. This page is
+ * Platform-owner side of the course → question-bank pipeline. This page is
  * only for accepting a request and jumping into its bank — the actual
  * content-review stages (Generating -> Platform Review -> Coaching Review ->
  * Finalized) happen on the bank itself (QuestionBankDetail), since that's
@@ -57,7 +57,7 @@ export function QuestionRequests() {
   const startBank = async (r: QuestionBankRequest) => {
     const updated = await questionBankRequestService.startBank(r.id);
     await load();
-    toast('Bank started', `${r.examName}'s question bank is now being generated.`);
+    toast('Bank started', `${r.courseName}'s question bank is now being generated.`);
     if (updated.questionBankId) navigate(`/platform/question-banks/${updated.questionBankId}`);
   };
 
@@ -114,7 +114,7 @@ export function QuestionRequests() {
             <Card key={r.id} className="request-card" onClick={() => openDetail(r)}>
               <div className="request-top">
                 <div>
-                  <b>{r.examName}</b>
+                  <b>{r.courseName}</b>
                   <small>
                     {tenantName(r.tenantId)} · {r.createdAt}
                   </small>
@@ -138,7 +138,7 @@ export function QuestionRequests() {
       )}
 
       {selected && (
-        <Modal title={selected.examName} onClose={() => setSelected(null)}>
+        <Modal title={selected.courseName} onClose={() => setSelected(null)}>
           <div className="request-detail">
             <div className="request-detail-row">
               <span>Coaching</span>

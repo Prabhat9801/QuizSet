@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ArrowRight, Save } from 'lucide-react';
 import { Button, Card, Field, PageHeader } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { tenantService } from '@/services/mock';
+import { tenantService } from '@/services/api';
 
 /**
  * Unlike the earlier version of this page, saving here actually repaints the

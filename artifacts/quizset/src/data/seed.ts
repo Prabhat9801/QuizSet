@@ -1,7 +1,7 @@
 import {
   AuthUser,
   ChatbotConfig,
-  Exam,
+  Course,
   JoinRequest,
   LiveTest,
   Question,
@@ -77,10 +77,10 @@ export const tenants: Tenant[] = [
 
 // ---------------------------------------------------------------- students
 export const students: Student[] = [
-  { id: 'rahul', name: 'Rahul Sharma', email: 'rahul@student.demo', phone: '+91 98765 43210', tenantId: 'sunrise', status: 'Active', exams: 12, score: 78, joined: '12 Jan 2025' },
-  { id: 'ananya', name: 'Ananya Singh', email: 'ananya@sunrise.demo', phone: '+91 98111 22445', tenantId: 'sunrise', status: 'Active', exams: 18, score: 84, joined: '08 Jan 2025' },
-  { id: 'vikas', name: 'Vikas Kumar', email: 'vikas@sunrise.demo', phone: '+91 99200 31876', tenantId: 'sunrise', status: 'Pending', exams: 0, score: 0, joined: '02 Jul 2025' },
-  { id: 'meera', name: 'Meera Joshi', email: 'meera@sunrise.demo', phone: '+91 98001 10987', tenantId: 'sunrise', status: 'Suspended', exams: 9, score: 61, joined: '22 Dec 2024' },
+  { id: 'rahul', name: 'Rahul Sharma', email: 'rahul@student.demo', phone: '+91 98765 43210', tenantId: 'sunrise', status: 'Active', courses: 12, score: 78, joined: '12 Jan 2025' },
+  { id: 'ananya', name: 'Ananya Singh', email: 'ananya@sunrise.demo', phone: '+91 98111 22445', tenantId: 'sunrise', status: 'Active', courses: 18, score: 84, joined: '08 Jan 2025' },
+  { id: 'vikas', name: 'Vikas Kumar', email: 'vikas@sunrise.demo', phone: '+91 99200 31876', tenantId: 'sunrise', status: 'Pending', courses: 0, score: 0, joined: '02 Jul 2025' },
+  { id: 'meera', name: 'Meera Joshi', email: 'meera@sunrise.demo', phone: '+91 98001 10987', tenantId: 'sunrise', status: 'Suspended', courses: 9, score: 61, joined: '22 Dec 2024' },
 ];
 
 // -------------------------------------------------------------- join requests
@@ -95,9 +95,9 @@ export const joinRequests: JoinRequest[] = [
 // doc comment) — deliberately showing three different real stages in the
 // demo data, not just the end state:
 //   qb-ssc-cgl / qb-ssc-practice / qb-railway-gs / qb-banking-quant: already
-//     Finalized (they power a Published-or-publishable exam today).
+//     Finalized (they power a Published-or-publishable course today).
 //   qb-career-english: Coaching Review — the coaching owner can already see
-//     and edit these 3 questions, but no exam using this bank can publish yet.
+//     and edit these 3 questions, but no course using this bank can publish yet.
 export const questionBanks: QuestionBank[] = [
   { id: 'qb-ssc-cgl', tenantId: 'sunrise', name: 'SSC CGL 2026', subject: 'Quantitative Aptitude & Reasoning', status: 'Finalized', requestId: 'req-1' },
   { id: 'qb-ssc-practice', tenantId: 'sunrise', name: 'SSC CGL Reasoning Practice', subject: 'Reasoning', status: 'Finalized' },
@@ -109,7 +109,7 @@ export const questionBanks: QuestionBank[] = [
 // --------------------------------------------------------------- questions
 // A real, hand-checked pool of MCQs (English, per the current content
 // decision) — no placeholder/lorem-ipsum text. Distributed across the
-// question banks above so each exam has a genuine, distinct set instead of
+// question banks above so each course has a genuine, distinct set instead of
 // one shared array cycled with `% 5`. Every question now carries a `unit`
 // (the broad syllabus section) alongside its `topic` (the specific concept)
 // — that two-level hierarchy is what Topic-wise / Unit-wise practice groups by.
@@ -155,37 +155,38 @@ export const questions: Question[] = [
   { id: 'q-gk-4', questionBankId: 'qb-railway-gs', text: 'Which Indian city hosted the G20 Leaders’ Summit in 2023?', options: ['Mumbai', 'New Delhi', 'Bengaluru', 'Chennai'], answer: 1, explanation: 'New Delhi hosted the G20 Leaders’ Summit in September 2023.', unit: 'General Awareness', topic: 'Current Affairs', difficulty: 'Medium' },
 ];
 
-// ------------------------------------------------------------------- exams
+// ------------------------------------------------------------------ courses
 // `questions` count is intentionally derived at read time from the linked
-// question bank, never a hand-typed number — see examService.list/get in
+// question bank, never a hand-typed number — see courseService.list/get in
 // services/mock.ts. `assignedStudentIds: []` means every tenant student can
-// see the exam (the default) — a coaching only fills this in to restrict one.
-export const exams: Exam[] = [
-  { id: 'ssc-premium', tenantId: 'sunrise', questionBankId: 'qb-ssc-cgl', name: 'SSC CGL Premium Mock Test', description: 'A full-length mock covering Quantitative Aptitude and Reasoning at exam difficulty.', type: 'Mock Test', duration: 20, mrp: 999, sale: 499, preview: 5, status: 'Published', students: 1248, subject: 'Quantitative Aptitude', assignedStudentIds: [] },
-  { id: 'ssc-practice', tenantId: 'sunrise', questionBankId: 'qb-ssc-practice', name: 'SSC CGL Reasoning Practice Set', description: 'Untimed practice with instant feedback after every question.', type: 'Practice Quiz', duration: 0, mrp: 0, sale: 0, preview: 9, status: 'Published', students: 863, subject: 'Reasoning', assignedStudentIds: [] },
-  { id: 'railway', tenantId: 'sunrise', questionBankId: 'qb-railway-gs', name: 'Railway Group D General Awareness Test', description: 'Focused test on the General Awareness section of the Railway Group D syllabus.', type: 'Mock Test', duration: 8, mrp: 699, sale: 349, preview: 2, status: 'Upcoming', students: 0, subject: 'General Awareness', assignedStudentIds: [] },
-  { id: 'banking-quant', tenantId: 'career', questionBankId: 'qb-banking-quant', name: 'Banking PO Quant Sprint', description: 'A fast-paced Quantitative Aptitude practice set for Banking PO aspirants.', type: 'Practice Quiz', duration: 0, mrp: 399, sale: 199, preview: 3, status: 'Published', students: 432, subject: 'Quantitative Aptitude', assignedStudentIds: [] },
-  // Draft exams that exist specifically so the two in-flight requests below
-  // (req-2, req-3) have a real exam to link to — a request always points at
-  // an already-created exam, even one that's still empty/Draft.
-  { id: 'banking-english', tenantId: 'career', questionBankId: 'qb-career-english', name: 'Banking PO English Section', description: 'English section practice for Banking PO prelims.', type: 'Practice Quiz', duration: 0, mrp: 0, sale: 0, preview: 5, status: 'Draft', students: 0, subject: 'English', assignedStudentIds: [] },
-  { id: 'upsc-csat', tenantId: 'success', questionBankId: '', name: 'UPSC CSAT Practice', description: 'CSAT-style reasoning and comprehension practice.', type: 'Practice Quiz', duration: 0, mrp: 0, sale: 0, preview: 5, status: 'Draft', students: 0, subject: 'Reasoning', assignedStudentIds: [] },
+// see the course (the default) — a coaching only fills this in to restrict
+// it to specific, approved students.
+export const courses: Course[] = [
+  { id: 'ssc-premium', tenantId: 'sunrise', questionBankId: 'qb-ssc-cgl', name: 'SSC CGL Premium', description: 'Complete Quantitative Aptitude and Reasoning practice — topic-wise, unit-wise or full-length, at your own pace.', mrp: 999, sale: 499, preview: 5, status: 'Published', students: 1248, subject: 'Quantitative Aptitude', assignedStudentIds: [] },
+  { id: 'ssc-practice', tenantId: 'sunrise', questionBankId: 'qb-ssc-practice', name: 'SSC CGL Reasoning', description: 'Reasoning practice with instant feedback after every question.', mrp: 0, sale: 0, preview: 9, status: 'Published', students: 863, subject: 'Reasoning', assignedStudentIds: [] },
+  { id: 'railway', tenantId: 'sunrise', questionBankId: 'qb-railway-gs', name: 'Railway Group D General Awareness', description: 'Complete General Awareness practice for the Railway Group D syllabus.', mrp: 699, sale: 349, preview: 2, status: 'Upcoming', students: 0, subject: 'General Awareness', assignedStudentIds: [] },
+  { id: 'banking-quant', tenantId: 'career', questionBankId: 'qb-banking-quant', name: 'Banking PO Quant', description: 'A fast-paced Quantitative Aptitude practice system for Banking PO aspirants.', mrp: 399, sale: 199, preview: 3, status: 'Published', students: 432, subject: 'Quantitative Aptitude', assignedStudentIds: [] },
+  // Draft courses that exist specifically so the two in-flight requests below
+  // (req-2, req-3) have a real course to link to — a request always points
+  // at an already-created course, even one that's still empty/Draft.
+  { id: 'banking-english', tenantId: 'career', questionBankId: 'qb-career-english', name: 'Banking PO English', description: 'English section practice for Banking PO prelims.', mrp: 0, sale: 0, preview: 5, status: 'Draft', students: 0, subject: 'English', assignedStudentIds: [] },
+  { id: 'upsc-csat', tenantId: 'success', questionBankId: '', name: 'UPSC CSAT Practice', description: 'CSAT-style reasoning and comprehension practice.', mrp: 0, sale: 0, preview: 5, status: 'Draft', students: 0, subject: 'Reasoning', assignedStudentIds: [] },
 ];
 
 // -------------------------------------------------------------- live tests
 export const liveTests: LiveTest[] = [
   // Currently inside its window — lets a demo student actually take a live test right away.
-  { id: 'lt-live-now', tenantId: 'sunrise', examId: 'ssc-premium', name: 'SSC CGL Live Mock — Evening Batch', scheduledStart: isoAt(0, -1), scheduledEnd: isoAt(0, 5), durationMinutes: 20, price: 0, status: 'Published', participantIds: [] },
+  { id: 'lt-live-now', tenantId: 'sunrise', courseId: 'ssc-premium', name: 'SSC CGL Live Mock — Evening Batch', scheduledStart: isoAt(0, -1), scheduledEnd: isoAt(0, 5), durationMinutes: 20, price: 0, status: 'Published', participantIds: [] },
   // Upcoming, tomorrow.
-  { id: 'lt-upcoming', tenantId: 'sunrise', examId: 'railway', name: 'Railway Group D Grand Test', scheduledStart: isoAt(1, 10), scheduledEnd: isoAt(1, 12), durationMinutes: 8, price: 49, status: 'Published', participantIds: [] },
+  { id: 'lt-upcoming', tenantId: 'sunrise', courseId: 'railway', name: 'Railway Group D Grand Test', scheduledStart: isoAt(1, 10), scheduledEnd: isoAt(1, 12), durationMinutes: 8, price: 49, status: 'Published', participantIds: [] },
   // Already ended, so Results have something to show.
-  { id: 'lt-ended', tenantId: 'sunrise', examId: 'ssc-practice', name: 'SSC CGL Weekly Practice Test', scheduledStart: isoAt(-2, 9), scheduledEnd: isoAt(-2, 11), durationMinutes: 15, price: 0, status: 'Published', participantIds: [] },
+  { id: 'lt-ended', tenantId: 'sunrise', courseId: 'ssc-practice', name: 'SSC CGL Weekly Practice Test', scheduledStart: isoAt(-2, 9), scheduledEnd: isoAt(-2, 11), durationMinutes: 15, price: 0, status: 'Published', participantIds: [] },
 ];
 
 // -------------------------------------------------------- question-bank requests
 // Deliberately at three different real stages, matching the three
 // questionBanks stages above:
-//   req-1: Finalized — fully delivered, exam already published.
+//   req-1: Finalized — fully delivered, course already published.
 //   req-2: In Progress — bank exists and is in Coaching Review; the coaching
 //     didn't specify units/topics itself (unitsTopics left unset), so the
 //     platform owner derived the English breakdown from the syllabus file.
@@ -193,9 +194,9 @@ export const liveTests: LiveTest[] = [
 //     breakdown up front, showing the "coaching already knows its syllabus"
 //     path.
 export const questionBankRequests: QuestionBankRequest[] = [
-  { id: 'req-1', tenantId: 'sunrise', examId: 'ssc-premium', examName: 'SSC CGL Premium Mock Test', subjects: ['Quantitative Aptitude', 'Reasoning'], questionsRequired: 100, difficulty: 'Easy + Medium + Hard', priority: 'High', status: 'Finalized', questionBankId: 'qb-ssc-cgl', createdAt: '3 weeks ago', ownerNote: 'Delivered and published to the exam catalog.' },
-  { id: 'req-2', tenantId: 'career', examId: 'banking-english', examName: 'Banking PO English Section', subjects: ['English'], questionsRequired: 60, difficulty: 'Easy + Medium', priority: 'Medium', notes: 'Focus on grammar and vocabulary for the prelims level.', syllabusFileName: 'banking-po-english-syllabus.pdf', status: 'In Progress', questionBankId: 'qb-career-english', createdAt: '2 days ago', ownerNote: 'Syllabus breakdown was not provided, so units/topics were derived from the uploaded file. First batch of Grammar + Vocabulary is in for your review.' },
-  { id: 'req-3', tenantId: 'success', examId: 'upsc-csat', examName: 'UPSC CSAT Practice', subjects: ['Reasoning', 'Comprehension'], questionsRequired: 150, difficulty: 'Medium + Hard', priority: 'High', notes: 'Please prioritize comprehension passages — that is our weakest area.', unitsTopics: 'Reasoning: Analogy, Coding-Decoding, Series. Comprehension: Passage-based inference, Vocabulary-in-context.', syllabusFileName: 'upsc-csat-syllabus.pdf', status: 'Pending', createdAt: 'Yesterday' },
+  { id: 'req-1', tenantId: 'sunrise', courseId: 'ssc-premium', courseName: 'SSC CGL Premium Mock Test', subjects: ['Quantitative Aptitude', 'Reasoning'], questionsRequired: 100, difficulty: 'Easy + Medium + Hard', priority: 'High', status: 'Finalized', questionBankId: 'qb-ssc-cgl', createdAt: '3 weeks ago', ownerNote: 'Delivered and published to the course catalog.' },
+  { id: 'req-2', tenantId: 'career', courseId: 'banking-english', courseName: 'Banking PO English Section', subjects: ['English'], questionsRequired: 60, difficulty: 'Easy + Medium', priority: 'Medium', notes: 'Focus on grammar and vocabulary for the prelims level.', syllabusFileName: 'banking-po-english-syllabus.pdf', status: 'In Progress', questionBankId: 'qb-career-english', createdAt: '2 days ago', ownerNote: 'Syllabus breakdown was not provided, so units/topics were derived from the uploaded file. First batch of Grammar + Vocabulary is in for your review.' },
+  { id: 'req-3', tenantId: 'success', courseId: 'upsc-csat', courseName: 'UPSC CSAT Practice', subjects: ['Reasoning', 'Comprehension'], questionsRequired: 150, difficulty: 'Medium + Hard', priority: 'High', notes: 'Please prioritize comprehension passages — that is our weakest area.', unitsTopics: 'Reasoning: Analogy, Coding-Decoding, Series. Comprehension: Passage-based inference, Vocabulary-in-context.', syllabusFileName: 'upsc-csat-syllabus.pdf', status: 'Pending', createdAt: 'Yesterday' },
 ];
 
 // ------------------------------------------------------------- chatbot config

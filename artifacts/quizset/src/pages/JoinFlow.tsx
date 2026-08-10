@@ -3,7 +3,7 @@ import { useLocation } from 'wouter';
 import { ArrowRight, Building2, CheckCircle2, Search } from 'lucide-react';
 import { Button, Card, PageHeader, Tabs } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { authService, joinRequestService, tenantService } from '@/services/mock';
+import { joinRequestService, tenantService } from '@/services/api';
 import { Tenant } from '@/types';
 
 /**
@@ -37,7 +37,7 @@ export function JoinFlow() {
     if (!found || !user) return;
     const { user: updated } = await joinRequestService.joinByCode(user.id, found.joinCode);
     login(updated);
-    toast('Welcome to ' + found.name, 'You can now see your exams.');
+    toast('Welcome to ' + found.name, 'You can now see your courses.');
     navigate('/student/dashboard', { replace: true });
   };
 

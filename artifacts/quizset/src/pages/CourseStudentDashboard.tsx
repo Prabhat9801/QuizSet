@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, CheckCircle2, Clock3, Percent, Users } from 'lucide-react';
+import { Award, ArrowLeft, CheckCircle2, Clock3, Percent, Users } from 'lucide-react';
 import { Link, useRoute } from 'wouter';
-import { Badge, Card, EmptyState, PageHeader, Skeleton, Stat } from '@/components/ui';
-import { attemptService, computeTopicBreakdown, examService, questionService, studentService } from '@/services/mock';
-import { Attempt, Exam, Question, Student } from '@/types';
+import { Badge, Button, Card, EmptyState, Field, Modal, PageHeader, Skeleton, Stat } from '@/components/ui';
+import { attemptService, certificateService, computeTopicBreakdown, courseService, questionService, studentService } from '@/services/api';
+import { Attempt, Course, Question, Student } from '@/types';
 import { formatTimer } from '@/lib/format';
+import { useApp } from '@/contexts/AppContext';
 
 type StudentRow = { student: Student; attempts: Attempt[]; best: number; latest: number; lastAttempt: Attempt };
 
@@ -12,22 +13,26 @@ function accuracy(a: Attempt): number {
   return a.totalAttempted ? Math.round((a.score / a.totalAttempted) * 100) : 0;
 }
 
-/** Coaching owner's per-exam drill-down: who has attempted, how well, and where the class is weak — topic by topic. */
-export function ExamStudentDashboard() {
-  const [, params] = useRoute('/coaching/exams/:id/students');
-  const [exam, setExam] = useState<Exam | null>(null);
+/** Coaching owner's per-course drill-down: who has attempted, how well, and where the class is weak — topic by topic. */
+export function CourseStudentDashboard() {
+  const { toast } = useApp();
+  const [, params] = useRoute('/coaching/courses/:id/students');
+  const [course, setCourse] = useState<Course | null>(null);
   const [attempts, setAttempts] = useState<Attempt[] | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [unitFilter, setUnitFilter] = useState('All');
   const [studentQuery, setStudentQuery] = useState('');
+  const [certifying, setCertifying] = useState<Student | null>(null);
+  const [certNote, setCertNote] = useState('');
+  const [issuing, setIssuing] = useState(false);
 
   useEffect(() => {
     if (!params?.id) return;
-    examService.get(params.id).then(async (e) => {
-      if (!e) return;
-      setExam(e);
-      const [a, s, qs] = await Promise.all([attemptService.listForExam(e.id), studentService.list(e.tenantId), questionService.listByExam(e.id)]);
+    courseService.get(params.id).then(async (c) => {
+      if (!c) return;
+      setCourse(c);
+      const [a, s, qs] = await Promise.all([attemptService.listForCourse(c.id), studentService.list(c.tenantId), questionService.listByCourse(c.id)]);
       setAttempts(a);
       setStudents(s);
       setQuestions(qs);
@@ -35,9 +40,9 @@ export function ExamStudentDashboard() {
   }, [params?.id]);
 
   const eligible = useMemo(() => {
-    if (!exam) return [];
-    return students.filter((s) => exam.assignedStudentIds.length === 0 || exam.assignedStudentIds.includes(s.id));
-  }, [exam, students]);
+    if (!course) return [];
+    return students.filter((s) => course.assignedStudentIds.length === 0 || course.assignedStudentIds.includes(s.id));
+  }, [course, students]);
 
   const rows = useMemo<StudentRow[]>(() => {
     if (!attempts) return [];
@@ -65,7 +70,24 @@ export function ExamStudentDashboard() {
   const sq = studentQuery.trim().toLowerCase();
   const filteredRows = rows.filter((r) => !sq || r.student.name.toLowerCase().includes(sq) || r.student.email.toLowerCase().includes(sq));
 
-  if (!exam || !attempts) return <Skeleton className="skeleton-page" />;
+  const openCertify = (student: Student) => {
+    setCertNote('');
+    setCertifying(student);
+  };
+
+  const issueCertificate = async () => {
+    if (!certifying || !course) return;
+    setIssuing(true);
+    try {
+      await certificateService.issue({ tenantId: course.tenantId, studentId: certifying.id, courseId: course.id, note: certNote.trim() || undefined });
+      toast('Certificate issued', `${certifying.name} can now see it in their certificates list.`);
+      setCertifying(null);
+    } finally {
+      setIssuing(false);
+    }
+  };
+
+  if (!course || !attempts) return <Skeleton className="skeleton-page" />;
 
   const avgAccuracy = attempts.length ? Math.round(attempts.reduce((sum, a) => sum + accuracy(a), 0) / attempts.length) : 0;
   const avgTime = attempts.length ? Math.round(attempts.reduce((sum, a) => sum + a.timeTakenSeconds, 0) / attempts.length) : 0;
@@ -73,12 +95,12 @@ export function ExamStudentDashboard() {
   return (
     <>
       <PageHeader
-        eyebrow={exam.name}
+        eyebrow={course.name}
         title="Student performance"
-        description="Every attempt on this exam, plus where the class is strong or weak by topic."
+        description="Every attempt on this course, plus where the class is strong or weak by topic."
         action={
-          <Link href={`/coaching/exams/${exam.id}`} className="btn btn-ghost">
-            <ArrowLeft size={14} /> Back to exam
+          <Link href={`/coaching/courses/${course.id}`} className="btn btn-ghost">
+            <ArrowLeft size={14} /> Back to course
           </Link>
         }
       />
@@ -94,7 +116,7 @@ export function ExamStudentDashboard() {
         <div className="card-title">
           <div>
             <h2>Topic & unit accuracy</h2>
-            <p>Across every student's attempts on this exam.</p>
+            <p>Across every student's attempts on this course.</p>
           </div>
         </div>
         {topicRows.length === 0 ? (
@@ -159,7 +181,7 @@ export function ExamStudentDashboard() {
           </div>
         </div>
         {rows.length === 0 ? (
-          <EmptyState title="No attempts yet" description="Nobody eligible for this exam has attempted it yet." />
+          <EmptyState title="No attempts yet" description="Nobody eligible for this course has attempted it yet." />
         ) : (
           <>
             <div className="filter-bar" style={{ padding: '0 0 14px' }}>
@@ -198,9 +220,14 @@ export function ExamStudentDashboard() {
                     </td>
                     <td>{new Date(r.lastAttempt.createdAt).toLocaleDateString('en-IN')}</td>
                     <td>
-                      <Link href={`/coaching/exams/${exam.id}/results/${r.lastAttempt.id}`} className="text-link">
-                        View last attempt
-                      </Link>
+                      <div className="table-actions">
+                        <Link href={`/coaching/courses/${course.id}/results/${r.lastAttempt.id}`} className="text-link">
+                          View last attempt
+                        </Link>
+                        <button data-testid={`button-issue-certificate-${r.student.id}`} className="text-link" onClick={() => openCertify(r.student)}>
+                          <Award size={13} /> Issue certificate
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -225,6 +252,26 @@ export function ExamStudentDashboard() {
           </div>
         )}
       </Card>
+
+      {certifying && (
+        <Modal title="Issue certificate" onClose={() => setCertifying(null)}>
+          <p className="modal-copy">
+            Issuing a branded certificate to <b>{certifying.name}</b> for <b>{course.name}</b>. This carries your coaching's current branding, snapshotted at
+            the moment you issue it — a later rebrand won't change it.
+          </p>
+          <Field label="Note (optional)" htmlFor="cert-note">
+            <textarea id="cert-note" className="form-input" value={certNote} onChange={(e) => setCertNote(e.target.value)} placeholder="e.g. Top scorer of the batch" data-testid="input-certificate-note" />
+          </Field>
+          <div className="form-actions">
+            <Button variant="ghost" onClick={() => setCertifying(null)}>
+              Cancel
+            </Button>
+            <Button onClick={issueCertificate} disabled={issuing} data-testid="button-confirm-issue-certificate">
+              <Award size={14} /> {issuing ? 'Issuing…' : 'Issue certificate'}
+            </Button>
+          </div>
+        </Modal>
+      )}
     </>
   );
 }

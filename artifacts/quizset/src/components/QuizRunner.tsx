@@ -5,10 +5,11 @@ import { Question } from '@/types';
 import { formatTimer } from '@/lib/format';
 
 /**
- * Untimed, immediate-feedback mode — matches the spec's "Practice Quiz Mode"
- * exactly: no forced timer, correctness revealed the instant an option is
- * picked, then a Next button. Shared by exam attempts and (eventually) any
- * other practice-style flow, so this logic lives in one place.
+ * Untimed, immediate-feedback mode — every course's practice system runs on
+ * this: no forced timer, correctness revealed the instant an option is
+ * picked, then a Next button. This is the ONLY runner a course attempt ever
+ * uses — a course has no timed "type" of its own; a timed, scheduled,
+ * one-shot experience is what LiveTest (and TimedQuizRunner below) is for.
  */
 export function PracticeQuizRunner({ title, questions, onFinish }: { title: string; questions: Question[]; onFinish: (answers: Record<number, number>, timeTakenSeconds: number) => void }) {
   const [index, setIndex] = useState(0);
@@ -73,9 +74,9 @@ export function PracticeQuizRunner({ title, questions, onFinish }: { title: stri
 
 /**
  * Timed, no-feedback-until-submit mode — question palette, mark-for-review,
- * auto-submit at zero. Shared by the exam "Mock Test" flow and Live Tests,
- * since both are genuinely the same experience with a different source for
- * the time budget.
+ * auto-submit at zero. Used exclusively by Live Tests (a scheduled,
+ * timed, one-shot event) — never by a course's own practice attempts,
+ * which always run through PracticeQuizRunner above.
  */
 export function TimedQuizRunner({ title, questions, totalSeconds, onSubmit }: { title: string; questions: Question[]; totalSeconds: number; onSubmit: (answers: Record<number, number>, timeTakenSeconds: number) => void }) {
   const [index, setIndex] = useState(0);

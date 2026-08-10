@@ -1,8 +1,9 @@
 import {
   AuthUser,
   Attempt,
+  Certificate,
   ChatbotConfig,
-  Exam,
+  Course,
   JoinRequest,
   LiveTest,
   LiveTestPhase,
@@ -15,12 +16,13 @@ import {
   Role,
   Student,
   Tenant,
+  Testimonial,
   Transaction,
 } from '@/types';
 import { storage } from './storage';
 import {
   chatbotConfigs,
-  exams,
+  courses,
   joinRequests,
   liveTests,
   questionBankRequests,
@@ -152,7 +154,7 @@ export const joinRequestService = {
     const allStudents = readList('students', students);
     const user = updatedUsers.find((u) => u.id === userId)!;
     if (!allStudents.some((s) => s.id === userId)) {
-      const record: Student = { id: userId, name: user.name, email: user.email, phone: '', tenantId: tenant.id, status: 'Active', exams: 0, score: 0, joined: 'Today' };
+      const record: Student = { id: userId, name: user.name, email: user.email, phone: '', tenantId: tenant.id, status: 'Active', courses: 0, score: 0, joined: 'Today' };
       writeList('students', [...allStudents, record]);
     }
     storage.set('auth', user);
@@ -179,76 +181,75 @@ export const joinRequestService = {
     writeList('joinRequests', updated);
     if (approve) {
       const allStudents = readList('students', students);
-      const record: Student = { id: `student-${Date.now()}`, name: target.studentName, email: target.studentEmail, phone: '', tenantId: target.tenantId, status: 'Active', exams: 0, score: 0, joined: 'Today' };
+      const record: Student = { id: `student-${Date.now()}`, name: target.studentName, email: target.studentEmail, phone: '', tenantId: target.tenantId, status: 'Active', courses: 0, score: 0, joined: 'Today' };
       writeList('students', [...allStudents, record]);
     }
     return updated.find((r) => r.id === id)!;
   },
 };
 
-// -------------------------------------------------------------------- exams
+// ------------------------------------------------------------------ courses
 /** The count a student/coaching actually sees — always the real linked bank size, never a hand-typed lie. */
-function realQuestionCount(exam: Exam, allQuestions: Question[]): number {
-  return allQuestions.filter((q) => q.questionBankId === exam.questionBankId).length;
+function realQuestionCount(course: Course, allQuestions: Question[]): number {
+  return allQuestions.filter((q) => q.questionBankId === course.questionBankId).length;
 }
 
-export type ExamWithCount = Exam & { questionCount: number };
+export type CourseWithCount = Course & { questionCount: number };
 
-/** Empty assignedStudentIds means "every tenant student" — the default, and what most exams use. */
-function studentCanSeeExam(exam: Exam, studentId: string): boolean {
-  return exam.assignedStudentIds.length === 0 || exam.assignedStudentIds.includes(studentId);
+/** Empty assignedStudentIds means "every tenant student" — the default, and what most courses use. */
+function studentCanSeeCourse(course: Course, studentId: string): boolean {
+  return course.assignedStudentIds.length === 0 || course.assignedStudentIds.includes(studentId);
 }
 
-export const examService = {
-  async list(tenantId?: string): Promise<Exam[]> {
+export const courseService = {
+  async list(tenantId?: string): Promise<Course[]> {
     await wait();
-    return readList('exams', exams).filter((e) => !tenantId || e.tenantId === tenantId);
+    return readList('courses', courses).filter((c) => !tenantId || c.tenantId === tenantId);
   },
-  /** Same as list(), but with each exam's real question count attached — what pages should render. */
-  async listWithCounts(tenantId?: string): Promise<ExamWithCount[]> {
+  /** Same as list(), but with each course's real question count attached — what pages should render. */
+  async listWithCounts(tenantId?: string): Promise<CourseWithCount[]> {
     const [all, qs] = await Promise.all([this.list(tenantId), Promise.resolve(readList('questions', questions))]);
-    return all.map((e) => ({ ...e, questionCount: realQuestionCount(e, qs) }));
+    return all.map((c) => ({ ...c, questionCount: realQuestionCount(c, qs) }));
   },
-  /** What one specific student is allowed to see — respects per-exam assignment, not just tenant membership. */
-  async listForStudent(tenantId: string, studentId: string): Promise<ExamWithCount[]> {
+  /** What one specific student is allowed to see — respects per-course assignment (approval), not just tenant membership. */
+  async listForStudent(tenantId: string, studentId: string): Promise<CourseWithCount[]> {
     const all = await this.listWithCounts(tenantId);
-    return all.filter((e) => studentCanSeeExam(e, studentId));
+    return all.filter((c) => studentCanSeeCourse(c, studentId));
   },
-  async get(id: string): Promise<Exam | undefined> {
+  async get(id: string): Promise<Course | undefined> {
     await wait();
-    return readList('exams', exams).find((e) => e.id === id);
+    return readList('courses', courses).find((c) => c.id === id);
   },
-  async getWithCount(id: string): Promise<ExamWithCount | undefined> {
-    const exam = await this.get(id);
-    if (!exam) return undefined;
-    return { ...exam, questionCount: realQuestionCount(exam, readList('questions', questions)) };
+  async getWithCount(id: string): Promise<CourseWithCount | undefined> {
+    const course = await this.get(id);
+    if (!course) return undefined;
+    return { ...course, questionCount: realQuestionCount(course, readList('questions', questions)) };
   },
   /**
-   * A brand-new exam almost always has no bank yet — a bank is requested FOR
-   * an exam that already exists (see questionBankRequestService), never the
-   * other way round. Same publish-guard as update(): a bare `questionBankId`
-   * pointing at nothing (or nothing at all) can never be Finalized, so this
-   * naturally blocks creating an exam as Published with no real content.
+   * A brand-new course almost always has no bank yet — a bank is requested
+   * FOR a course that already exists (see questionBankRequestService), never
+   * the other way round. Same publish-guard as update(): a bare
+   * `questionBankId` pointing at nothing (or nothing at all) can never be
+   * Finalized, so this naturally blocks creating a course as Published with
+   * no real content.
    */
-  async create(data: Partial<Exam> & { tenantId: string }): Promise<Exam> {
+  async create(data: Partial<Course> & { tenantId: string }): Promise<Course> {
     await wait();
-    const all = readList('exams', exams);
+    const all = readList('courses', courses);
     const status = data.status || 'Draft';
     const questionBankId = data.questionBankId || '';
     if (status === 'Published') {
       const bank = readList('questionBanks', questionBanks).find((b) => b.id === questionBankId);
       if (!bank || bank.status !== 'Finalized') {
-        throw new Error('This exam has no finalized question bank yet — it cannot be published.');
+        throw new Error('This course has no finalized question bank yet — it cannot be published.');
       }
     }
-    const item: Exam = {
-      id: `exam-${Date.now()}`,
+    const item: Course = {
+      id: `course-${Date.now()}`,
       tenantId: data.tenantId,
       questionBankId,
-      name: data.name || 'New Assessment',
+      name: data.name || 'New Course',
       description: data.description,
-      type: data.type || 'Mock Test',
-      duration: data.duration ?? 30,
       mrp: data.mrp ?? 0,
       sale: data.sale ?? 0,
       preview: data.preview ?? 5,
@@ -257,7 +258,7 @@ export const examService = {
       subject: data.subject || 'General',
       assignedStudentIds: data.assignedStudentIds || [],
     };
-    writeList('exams', [...all, item]);
+    writeList('courses', [...all, item]);
     return item;
   },
   /**
@@ -265,26 +266,26 @@ export const examService = {
    * coaching owner can't accidentally show students a bank that's still
    * mid-review. Every other field updates normally.
    */
-  async update(id: string, data: Partial<Exam>): Promise<Exam> {
+  async update(id: string, data: Partial<Course>): Promise<Course> {
     await wait();
-    const all = readList('exams', exams);
-    const current = all.find((e) => e.id === id);
-    if (!current) throw new Error('Exam not found.');
+    const all = readList('courses', courses);
+    const current = all.find((c) => c.id === id);
+    if (!current) throw new Error('Course not found.');
     if (data.status === 'Published' && current.status !== 'Published') {
       const bank = readList('questionBanks', questionBanks).find((b) => b.id === current.questionBankId);
       if (!bank || bank.status !== 'Finalized') {
-        throw new Error('This exam’s question bank has not been finalized yet — it cannot be published until the coaching owner approves it.');
+        throw new Error('This course’s question bank has not been finalized yet — it cannot be published until the coaching owner approves it.');
       }
     }
-    const updated = all.map((e) => (e.id === id ? { ...e, ...data } : e));
-    writeList('exams', updated);
-    return updated.find((e) => e.id === id)!;
+    const updated = all.map((c) => (c.id === id ? { ...c, ...data } : c));
+    writeList('courses', updated);
+    return updated.find((c) => c.id === id)!;
   },
-  /** The real question count for one exam — used everywhere a page needs to display or slice by it. */
-  async questionCount(examId: string): Promise<number> {
-    const exam = await this.get(examId);
-    if (!exam) return 0;
-    return realQuestionCount(exam, readList('questions', questions));
+  /** The real question count for one course — used everywhere a page needs to display or slice by it. */
+  async questionCount(courseId: string): Promise<number> {
+    const course = await this.get(courseId);
+    if (!course) return 0;
+    return realQuestionCount(course, readList('questions', questions));
   },
 };
 
@@ -372,20 +373,21 @@ export const questionBankRequestService = {
     return readList('questionBankRequests', questionBankRequests).filter((r) => !tenantId || r.tenantId === tenantId);
   },
   /**
-   * `examId` must point at an exam the coaching already created — a request
-   * is always "more questions for exam X", never a bare exam name. Pass
-   * `unitsTopics` when the coaching already knows its own syllabus
-   * breakdown; leave it unset and the platform owner derives Units/Topics
-   * from the uploaded syllabus file instead when they pick the request up.
+   * `courseId` must point at a course the coaching already created — a
+   * request is always "more questions for course X", never a bare course
+   * name. Pass `unitsTopics` when the coaching already knows its own
+   * syllabus breakdown; leave it unset and the platform owner derives
+   * Units/Topics from the uploaded syllabus file instead when they pick the
+   * request up.
    */
-  async create(data: Partial<QuestionBankRequest> & { tenantId: string; examId: string; examName: string }): Promise<QuestionBankRequest> {
+  async create(data: Partial<QuestionBankRequest> & { tenantId: string; courseId: string; courseName: string }): Promise<QuestionBankRequest> {
     await wait();
     const all = readList('questionBankRequests', questionBankRequests);
     const item: QuestionBankRequest = {
       id: `req-${Date.now()}`,
       tenantId: data.tenantId,
-      examId: data.examId,
-      examName: data.examName,
+      courseId: data.courseId,
+      courseName: data.courseName,
       subjects: data.subjects || [],
       questionsRequired: data.questionsRequired ?? 50,
       difficulty: data.difficulty || 'Easy + Medium',
@@ -402,10 +404,11 @@ export const questionBankRequestService = {
   /**
    * Platform owner accepts a Pending request: creates its bank (stage:
    * Generating), moves the request to In Progress, and immediately links
-   * the bank onto the exam it was requested for — so "Manage questions" and
-   * the exam's student-facing content have something real to point at as
-   * soon as the bank exists, well before it's Finalized (the publish-guard
-   * is what actually keeps students out until then, not this link).
+   * the bank onto the course it was requested for — so "Manage questions"
+   * and the course's student-facing content have something real to point at
+   * as soon as the bank exists, well before it's Finalized (the
+   * publish-guard is what actually keeps students out until then, not this
+   * link).
    */
   async startBank(id: string): Promise<QuestionBankRequest> {
     await wait();
@@ -414,10 +417,10 @@ export const questionBankRequestService = {
     if (!target) throw new Error('Request not found.');
     if (target.questionBankId) return target; // already started
 
-    const bank = await questionBankService.create({ tenantId: target.tenantId, name: target.examName, subject: target.subjects.join(', '), status: 'Generating', requestId: target.id });
+    const bank = await questionBankService.create({ tenantId: target.tenantId, name: target.courseName, subject: target.subjects.join(', '), status: 'Generating', requestId: target.id });
     const updated = readList('questionBankRequests', questionBankRequests).map((r) => (r.id === id ? { ...r, status: 'In Progress' as const, questionBankId: bank.id } : r));
     writeList('questionBankRequests', updated);
-    writeList('exams', readList('exams', exams).map((e) => (e.id === target.examId ? { ...e, questionBankId: bank.id } : e)));
+    writeList('courses', readList('courses', courses).map((c) => (c.id === target.courseId ? { ...c, questionBankId: bank.id } : c)));
     return updated.find((r) => r.id === id)!;
   },
   async setOwnerNote(id: string, ownerNote: string): Promise<QuestionBankRequest> {
@@ -434,14 +437,14 @@ export const questionService = {
     await wait();
     return readList('questions', questions).filter((q) => q.questionBankId === questionBankId);
   },
-  async listByExam(examId: string): Promise<Question[]> {
-    const exam = await examService.get(examId);
-    if (!exam) return [];
-    return this.listByBank(exam.questionBankId);
+  async listByCourse(courseId: string): Promise<Question[]> {
+    const course = await courseService.get(courseId);
+    if (!course) return [];
+    return this.listByBank(course.questionBankId);
   },
-  /** The Unit -> Topics tree for one exam's bank — what the Quiz Setup screen's mode pickers list from. */
-  async syllabusTree(examId: string): Promise<{ unit: string; topics: string[] }[]> {
-    const qs = await this.listByExam(examId);
+  /** The Unit -> Topics tree for one course's bank — what the Quiz Setup screen's mode pickers list from. */
+  async syllabusTree(courseId: string): Promise<{ unit: string; topics: string[] }[]> {
+    const qs = await this.listByCourse(courseId);
     const byUnit = new Map<string, Set<string>>();
     for (const q of qs) {
       if (!byUnit.has(q.unit)) byUnit.set(q.unit, new Set());
@@ -502,13 +505,13 @@ export const liveTestService = {
     await wait(80);
     return readList('liveTests', liveTests).find((t) => t.id === id);
   },
-  async create(data: Partial<LiveTest> & { tenantId: string; examId: string; name: string }): Promise<LiveTest> {
+  async create(data: Partial<LiveTest> & { tenantId: string; courseId: string; name: string }): Promise<LiveTest> {
     await wait();
     const all = readList('liveTests', liveTests);
     const item: LiveTest = {
       id: `lt-${Date.now()}`,
       tenantId: data.tenantId,
-      examId: data.examId,
+      courseId: data.courseId,
       name: data.name,
       scheduledStart: data.scheduledStart || new Date().toISOString(),
       scheduledEnd: data.scheduledEnd || new Date(Date.now() + 3600_000).toISOString(),
@@ -570,11 +573,11 @@ export const attemptService = {
       .filter((a) => a.studentId === studentId)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
-  /** Every attempt on one exam, any student — what the coaching-owner student-tracking dashboard reads. */
-  async listForExam(examId: string): Promise<Attempt[]> {
+  /** Every attempt on one course, any student — what the coaching-owner student-tracking dashboard reads. */
+  async listForCourse(courseId: string): Promise<Attempt[]> {
     await wait();
     return readList<Attempt>('attempts', [])
-      .filter((a) => a.examId === examId)
+      .filter((a) => a.courseId === courseId)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
   async get(id: string): Promise<Attempt | undefined> {
@@ -594,8 +597,8 @@ export const attemptService = {
    * been seen, it cycles — reusing already-seen ones rather than blocking
    * the student from practising further.
    */
-  async pickForPractice(studentId: string, examId: string, scope: PracticeScope, pool: Question[], count: number): Promise<Question[]> {
-    const past = (await this.listForStudent(studentId)).filter((a) => a.examId === examId && a.mode === 'practice' && a.practiceScope && sameScope(a.practiceScope, scope));
+  async pickForPractice(studentId: string, courseId: string, scope: PracticeScope, pool: Question[], count: number): Promise<Question[]> {
+    const past = (await this.listForStudent(studentId)).filter((a) => a.courseId === courseId && a.mode === 'practice' && a.practiceScope && sameScope(a.practiceScope, scope));
     const seenIds = new Set(past.flatMap((a) => a.questionIds));
     const unseen = pool.filter((q) => !seenIds.has(q.id));
     const ordered = unseen.length >= count ? unseen : [...unseen, ...pool.filter((q) => seenIds.has(q.id))];
@@ -671,6 +674,106 @@ export const aiService = {
     if (text.includes('shortcut')) return 'A quick shortcut: for successive percentage changes of a% and b%, the net change is a + b + (a×b)/100. Try it on your next Percentage question.';
     if (text.includes('plan') || text.includes('study')) return "A focused 45-minute daily session — 20 minutes on your weakest topic, 25 minutes on a timed mini mock — tends to move scores faster than long unfocused sessions.";
     return "I can help you with a weak topic, an exam strategy, or explaining a question. Try asking about Percentage, Time & Work, or 'give me a shortcut'.";
+  },
+};
+
+// -------------------------------------------------------------- certificates
+export const certificateService = {
+  /**
+   * Coaching-owner-only, manual action — never triggered automatically off a
+   * score/completion threshold. Snapshots the CURRENT tenant branding +
+   * student/course names at call time, so a rebrand later never changes a
+   * certificate already handed out.
+   */
+  async issue(data: { tenantId: string; studentId: string; courseId: string; note?: string }): Promise<Certificate> {
+    await wait();
+    const [tenant, course] = await Promise.all([tenantService.get(data.tenantId), courseService.get(data.courseId)]);
+    const student = readList('students', students).find((s) => s.id === data.studentId);
+    const all = readList<Certificate>('certificates', []);
+    const item: Certificate = {
+      id: `cert-${Date.now()}`,
+      studentId: data.studentId,
+      studentName: student?.name || 'Student',
+      courseId: data.courseId,
+      courseName: course?.name || 'Course',
+      tenantId: data.tenantId,
+      certificateCode: `QS-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
+      coachingNameSnapshot: tenant?.name || 'QuizSet Coaching',
+      coachingLogoUrlSnapshot: undefined,
+      coachingThemeColorSnapshot: tenant?.primaryColor || '#4f46e5',
+      note: data.note,
+      issuedAt: new Date().toISOString(),
+    };
+    writeList('certificates', [...all, item]);
+    return item;
+  },
+  async listForStudent(studentId: string): Promise<Certificate[]> {
+    await wait();
+    return readList<Certificate>('certificates', [])
+      .filter((c) => c.studentId === studentId)
+      .sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime());
+  },
+  /** Public, unauthenticated-feeling lookup — what the shareable /certificate/:code view reads from. */
+  async getByCode(code: string): Promise<Certificate | undefined> {
+    await wait(150);
+    return readList<Certificate>('certificates', []).find((c) => c.certificateCode === code);
+  },
+};
+
+// -------------------------------------------------------------- testimonials
+export const testimonialService = {
+  /** Student submits their own story — starts with both approval gates false. */
+  async submit(data: { studentId: string; studentName: string; tenantId: string; courseId?: string; courseName?: string; content: string; outcome?: string }): Promise<Testimonial> {
+    await wait();
+    const all = readList<Testimonial>('testimonials', []);
+    const item: Testimonial = {
+      id: `testimonial-${Date.now()}`,
+      studentId: data.studentId,
+      studentName: data.studentName,
+      tenantId: data.tenantId,
+      courseId: data.courseId,
+      courseName: data.courseName,
+      content: data.content,
+      outcome: data.outcome,
+      coachingApproved: false,
+      platformApproved: false,
+      createdAt: new Date().toISOString(),
+    };
+    writeList('testimonials', [...all, item]);
+    return item;
+  },
+  /** Coaching owner's own approval queue — everything from their own students, any status. */
+  async listForTenant(tenantId: string): Promise<Testimonial[]> {
+    await wait();
+    return readList<Testimonial>('testimonials', [])
+      .filter((t) => t.tenantId === tenantId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+  /** Platform owner's queue — only testimonials the coaching has already cleared, second gate. */
+  async listPendingPlatform(): Promise<Testimonial[]> {
+    await wait();
+    return readList<Testimonial>('testimonials', [])
+      .filter((t) => t.coachingApproved && !t.platformApproved)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  },
+  async approveCoaching(id: string): Promise<Testimonial> {
+    await wait();
+    const all = readList<Testimonial>('testimonials', []).map((t) => (t.id === id ? { ...t, coachingApproved: true, coachingApprovedAt: new Date().toISOString() } : t));
+    writeList('testimonials', all);
+    return all.find((t) => t.id === id)!;
+  },
+  async approvePlatform(id: string): Promise<Testimonial> {
+    await wait();
+    const all = readList<Testimonial>('testimonials', []).map((t) => (t.id === id ? { ...t, platformApproved: true, platformApprovedAt: new Date().toISOString() } : t));
+    writeList('testimonials', all);
+    return all.find((t) => t.id === id)!;
+  },
+  /** Both gates true — this is what a landing page would eventually read from. No auth. */
+  async listPublic(): Promise<Testimonial[]> {
+    await wait();
+    return readList<Testimonial>('testimonials', [])
+      .filter((t) => t.coachingApproved && t.platformApproved)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 };
 

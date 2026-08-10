@@ -2,22 +2,26 @@ import { useCallback, useEffect, useState } from 'react';
 import { Check, Clock3, Pause, Play, UserCheck, UserMinus, Users, X } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, PageHeader, Stat, Tabs } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { joinRequestService, studentService } from '@/services/mock';
-import { JoinRequest, Student } from '@/types';
+import { joinRequestService, studentService, testimonialService } from '@/services/api';
+import { JoinRequest, Student, Testimonial } from '@/types';
 
 export function StudentsPage() {
   const { tenant, tenantId, toast } = useApp();
   const [tab, setTab] = useState('students');
   const [items, setItems] = useState<Student[]>([]);
   const [requests, setRequests] = useState<JoinRequest[]>([]);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [statusFilter, setStatusFilter] = useState('All');
   const [query, setQuery] = useState('');
+  const [testimonialFilter, setTestimonialFilter] = useState('All');
+  const [testimonialQuery, setTestimonialQuery] = useState('');
 
   const load = useCallback(async () => {
     if (!tenantId) return;
-    const [students, reqs] = await Promise.all([studentService.list(tenantId), joinRequestService.listForTenant(tenantId)]);
+    const [students, reqs, stories] = await Promise.all([studentService.list(tenantId), joinRequestService.listForTenant(tenantId), testimonialService.listForTenant(tenantId)]);
     setItems(students);
     setRequests(reqs);
+    setTestimonials(stories);
   }, [tenantId]);
 
   useEffect(() => {
@@ -33,7 +37,13 @@ export function StudentsPage() {
   const decide = async (r: JoinRequest, approve: boolean) => {
     await joinRequestService.decide(r.id, approve);
     await load();
-    toast(approve ? 'Student approved' : 'Request rejected', approve ? `${r.studentName} can now access your exams.` : `${r.studentName}'s request was declined.`);
+    toast(approve ? 'Student approved' : 'Request rejected', approve ? `${r.studentName} can now access your courses.` : `${r.studentName}'s request was declined.`);
+  };
+
+  const approveTestimonial = async (t: Testimonial) => {
+    await testimonialService.approveCoaching(t.id);
+    await load();
+    toast('Story approved', `${t.studentName}'s story now goes to QuizSet for the second, final approval.`);
   };
 
   const pendingRequests = requests.filter((r) => r.status === 'Pending');
@@ -43,6 +53,13 @@ export function StudentsPage() {
   const q = query.trim().toLowerCase();
   const filteredStudents = items.filter(
     (s) => (statusFilter === 'All' || s.status === statusFilter) && (!q || s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q))
+  );
+
+  const testimonialStage = (t: Testimonial) => (t.coachingApproved && t.platformApproved ? 'Public' : t.coachingApproved ? 'Awaiting QuizSet' : 'Needs your review');
+  const pendingTestimonials = testimonials.filter((t) => !t.coachingApproved);
+  const tq = testimonialQuery.trim().toLowerCase();
+  const filteredTestimonials = testimonials.filter(
+    (t) => (testimonialFilter === 'All' || testimonialStage(t) === testimonialFilter) && (!tq || t.studentName.toLowerCase().includes(tq) || t.content.toLowerCase().includes(tq))
   );
 
   return (
@@ -59,6 +76,7 @@ export function StudentsPage() {
         tabs={[
           { value: 'students', label: 'Directory', count: items.length },
           { value: 'requests', label: 'Join requests', count: pendingRequests.length },
+          { value: 'testimonials', label: 'Testimonials', count: pendingTestimonials.length },
         ]}
         value={tab}
         onChange={setTab}
@@ -100,7 +118,7 @@ export function StudentsPage() {
                     <th>Student</th>
                     <th>Email</th>
                     <th>Joined</th>
-                    <th>Exams</th>
+                    <th>Courses</th>
                     <th>Performance</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -115,7 +133,7 @@ export function StudentsPage() {
                       </td>
                       <td>{s.email}</td>
                       <td>{s.joined}</td>
-                      <td>{s.exams}</td>
+                      <td>{s.courses}</td>
                       <td>
                         <span className="score">{s.score ? s.score + '%' : '—'}</span>
                       </td>
@@ -177,6 +195,63 @@ export function StudentsPage() {
               </Card>
             ))}
           </div>
+        ))}
+
+      {tab === 'testimonials' &&
+        (testimonials.length === 0 ? (
+          <Card>
+            <EmptyState title="No stories yet" description="Testimonials students submit from their results page will show up here for your review." />
+          </Card>
+        ) : (
+          <>
+            <Card className="filter-bar">
+              <input type="text" placeholder="Search by student or story" value={testimonialQuery} onChange={(e) => setTestimonialQuery(e.target.value)} />
+              <select value={testimonialFilter} onChange={(e) => setTestimonialFilter(e.target.value)}>
+                <option value="All">All stages</option>
+                <option value="Needs your review">Needs your review</option>
+                <option value="Awaiting QuizSet">Awaiting QuizSet</option>
+                <option value="Public">Public</option>
+              </select>
+              <span className="filter-count">
+                {filteredTestimonials.length} of {testimonials.length}
+              </span>
+            </Card>
+
+            {filteredTestimonials.length === 0 ? (
+              <Card>
+                <EmptyState title="No stories match" description="Try a different search or stage." />
+              </Card>
+            ) : (
+              <div className="request-list">
+                {filteredTestimonials.map((t) => {
+                  const stage = testimonialStage(t);
+                  return (
+                    <Card key={t.id} className="request-card" style={{ cursor: 'default' }}>
+                      <div className="request-top">
+                        <div>
+                          <b>{t.studentName}</b>
+                          <small>
+                            {t.courseName || 'General feedback'} · {new Date(t.createdAt).toLocaleDateString('en-IN')}
+                          </small>
+                        </div>
+                        <Badge tone={stage === 'Public' ? 'success' : stage === 'Awaiting QuizSet' ? 'info' : 'neutral'}>{stage}</Badge>
+                      </div>
+                      <p className="request-meta">
+                        “{t.content}”{t.outcome ? ` — ${t.outcome}` : ''}
+                      </p>
+                      {stage === 'Needs your review' && (
+                        <div className="form-actions">
+                          <Button size="sm" onClick={() => approveTestimonial(t)} data-testid={`button-approve-testimonial-${t.id}`}>
+                            <Check size={13} /> Approve for public
+                          </Button>
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </>
         ))}
     </>
   );

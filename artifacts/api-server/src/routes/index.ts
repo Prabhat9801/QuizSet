@@ -1,8 +1,38 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import tenantsRouter from "./tenants";
+import profilesRouter from "./profiles";
+import coursesRouter from "./courses";
+import courseAssignmentsRouter from "./course-assignments";
+import questionBanksRouter from "./question-banks";
+import questionBankRequestsRouter from "./question-bank-requests";
+import questionsRouter from "./questions";
+import liveTestsRouter from "./live-tests";
+import attemptsRouter from "./attempts";
+import paymentsRouter from "./payments";
+import chatbotRouter from "./chatbot";
+import joinRequestsRouter from "./join-requests";
+import certificatesRouter from "./certificates";
+import testimonialsRouter from "./testimonials";
+import studyPlansRouter from "./study-plans";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(tenantsRouter);
+router.use(profilesRouter);
+router.use(coursesRouter);
+router.use(courseAssignmentsRouter);
+router.use(questionBanksRouter);
+router.use(questionBankRequestsRouter);
+router.use(questionsRouter);
+router.use(liveTestsRouter);
+router.use(attemptsRouter);
+router.use(paymentsRouter);
+router.use(chatbotRouter);
+router.use(joinRequestsRouter);
+router.use(certificatesRouter);
+router.use(testimonialsRouter);
+router.use(studyPlansRouter);
 
 export default router;

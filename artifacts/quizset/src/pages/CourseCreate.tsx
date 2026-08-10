@@ -3,24 +3,27 @@ import { ArrowLeft, ArrowRight, Check, Send } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { Alert, Button, Card, Field, PageHeader } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { examService } from '@/services/mock';
-import { ExamType } from '@/types';
+import { courseService } from '@/services/api';
 import { formatRupees } from '@/lib/format';
 
-const STEPS = ['Basic details', 'Configuration', 'Pricing', 'Review & create'];
-const EXAM_TYPES: ExamType[] = ['Practice Quiz', 'Mock Test', 'Live Test', 'Previous Year', 'Topic-wise'];
+const STEPS = ['Basic details', 'Pricing', 'Review & create'];
 
 /**
- * Exam-first, bank-second: a question bank is always requested FOR a
- * specific exam (see QuestionBanks.tsx), so it can't be chosen here — the
- * exam has to exist first. This wizard creates a Draft exam with no bank
- * yet; the "Request question bank" step happens from ExamEdit right after.
+ * Course-first, bank-second: a question bank is always requested FOR a
+ * specific course (see QuestionBanks.tsx), so it can't be chosen here — the
+ * course has to exist first. This wizard creates a Draft course with no bank
+ * yet; the "Request question bank" step happens from CourseEdit right after.
+ *
+ * No "type" or duration step — every course gets the exact same complete
+ * practice system (Topic-wise/Unit-wise/Multi-unit/Custom/Full, always
+ * untimed and personal to each student). A timed, scheduled, one-shot test
+ * is a separate Live Test, not a course setting.
  */
-export function CreateExam() {
+export function CreateCourse() {
   const { tenantId, toast } = useApp();
   const [, navigate] = useLocation();
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState({ name: '', description: '', subject: 'General', type: 'Mock Test' as ExamType, duration: '30', mrp: '', sale: '0', preview: '5' });
+  const [form, setForm] = useState({ name: '', description: '', subject: 'General', mrp: '', sale: '0', preview: '5' });
 
   const salePaise = Math.max(0, Number(form.sale) || 0);
   const mrpPaise = form.mrp.trim() ? Math.max(0, Number(form.mrp) || 0) : 0;
@@ -28,25 +31,23 @@ export function CreateExam() {
 
   const finish = async () => {
     if (!tenantId || !form.name.trim()) return;
-    const exam = await examService.create({
+    const course = await courseService.create({
       tenantId,
       name: form.name.trim(),
       description: form.description || undefined,
       subject: form.subject || 'General',
-      type: form.type,
-      duration: form.type === 'Practice Quiz' ? 0 : Math.max(0, Number(form.duration) || 0),
       mrp: mrpPaise || salePaise,
       sale: salePaise,
       preview: Math.max(0, Number(form.preview) || 0),
       status: 'Draft',
     });
-    toast('Exam created', 'Request a question bank next — it stays in Draft until that bank is finalized.');
-    navigate(`/coaching/exams/${exam.id}`);
+    toast('Course created', 'Request a question bank next — it stays in Draft until that bank is finalized.');
+    navigate(`/coaching/courses/${course.id}`);
   };
 
   const next = () => {
     if (step === 0 && !form.name.trim()) {
-      toast('Name your exam', 'Give it a clear name before continuing.', 'danger');
+      toast('Name your course', 'Give it a clear name before continuing.', 'danger');
       return;
     }
     if (step < STEPS.length - 1) setStep(step + 1);
@@ -56,12 +57,12 @@ export function CreateExam() {
   return (
     <>
       <PageHeader
-        eyebrow="Exam studio"
-        title="Create an exam"
-        description="Set the shape of the assessment now — you'll request its question bank right after."
+        eyebrow="Course studio"
+        title="Create a course"
+        description="Set the shape of the course now — you'll request its question bank right after."
         action={
-          <Link href="/coaching/exams" className="btn btn-ghost">
-            <ArrowLeft size={14} /> Back to exams
+          <Link href="/coaching/courses" className="btn btn-ghost">
+            <ArrowLeft size={14} /> Back to courses
           </Link>
         }
       />
@@ -77,44 +78,21 @@ export function CreateExam() {
         <Card>
           {step === 0 && (
             <>
-              <h2 className="wizard-title">Give your exam a clear shape.</h2>
-              <p className="wizard-sub">Students should know what this assessment is for before they start.</p>
-              <div className="form-grid">
-                <Field label="Exam name" required>
-                  <input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="SSC CGL Premium Mock Test" />
-                </Field>
-                <Field label="Exam type">
-                  <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as ExamType })}>
-                    {EXAM_TYPES.map((t) => (
-                      <option key={t}>{t}</option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
+              <h2 className="wizard-title">Give your course a clear shape.</h2>
+              <p className="wizard-sub">Students should know what this course is for before they start. It'll come with its own complete practice system — Topic-wise, Unit-wise, Multi-unit, Custom and Full, all untimed.</p>
+              <Field label="Course name" required>
+                <input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="SSC CGL 2026 preparation" />
+              </Field>
               <Field label="Subject">
                 <input className="form-input" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} placeholder="Quantitative Aptitude, General English…" />
               </Field>
               <Field label="Description">
-                <textarea className="form-input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What will this exam help learners practise?" />
+                <textarea className="form-input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What will this course help learners practise?" />
               </Field>
             </>
           )}
 
           {step === 1 && (
-            <>
-              <h2 className="wizard-title">Tune the experience.</h2>
-              <p className="wizard-sub">
-                {form.type === 'Practice Quiz' ? 'Practice quizzes have no timer — students answer at their own pace with instant feedback.' : 'Set the pace and challenge for your learners.'}
-              </p>
-              {form.type !== 'Practice Quiz' && (
-                <Field label="Duration (minutes)">
-                  <input className="form-input" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} />
-                </Field>
-              )}
-            </>
-          )}
-
-          {step === 2 && (
             <>
               <h2 className="wizard-title">Put a thoughtful price on it.</h2>
               <p className="wizard-sub">Make the value clear. A free preview helps students decide with confidence.</p>
@@ -133,14 +111,14 @@ export function CreateExam() {
             </>
           )}
 
-          {step === 3 && (
+          {step === 2 && (
             <>
               <h2 className="wizard-title">Ready to create.</h2>
-              <p className="wizard-sub">This exam starts in Draft — you'll request its question bank next, and can only publish once that bank is finalized.</p>
+              <p className="wizard-sub">This course starts in Draft — you'll request its question bank next, and can only publish once that bank is finalized.</p>
               <div className="publish-summary">
-                <b>{form.name || 'Untitled exam'}</b>
+                <b>{form.name || 'Untitled course'}</b>
                 <span>
-                  {form.type} · {form.subject} · {form.type === 'Practice Quiz' ? 'No timer' : `${form.duration} minutes`} · {salePaise ? formatRupees(salePaise) : 'Free'}
+                  {form.subject} · {salePaise ? formatRupees(salePaise) : 'Free'}
                 </span>
               </div>
             </>
@@ -152,7 +130,7 @@ export function CreateExam() {
             </Button>
             {step === STEPS.length - 1 ? (
               <Button onClick={finish} disabled={invalidMrp || !form.name.trim()}>
-                <Send size={14} /> Create exam
+                <Send size={14} /> Create course
               </Button>
             ) : (
               <Button onClick={next}>

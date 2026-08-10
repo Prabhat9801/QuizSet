@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight, Check, Edit3, Eye, Plus, RotateCcw, Save, Trash2
 import { Link, useRoute } from 'wouter';
 import { Alert, Badge, Button, Card, EmptyState, Field, Modal, PageHeader, Skeleton, Tabs } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { questionBankService, questionService } from '@/services/mock';
+import { questionBankService, questionService } from '@/services/api';
 import { Question, QuestionBank, QuestionBankStatus } from '@/types';
 
 const BLANK = { text: '', options: ['', '', '', ''], answer: 0, explanation: '', unit: '', topic: '', difficulty: 'Medium' as Question['difficulty'] };
@@ -87,7 +87,7 @@ export function QuestionBankDetail({ scope = 'coaching' }: { scope?: 'coaching' 
     if (!bank) return;
     await questionBankService.finalize(bank.id);
     await load();
-    toast('Bank finalized', `${bank.name} is approved — exams using it can now be published.`);
+    toast('Bank finalized', `${bank.name} is approved — courses using it can now be published.`);
   };
 
   if (!bank || !items) return <Skeleton className="skeleton-page" />;
@@ -145,10 +145,10 @@ export function QuestionBankDetail({ scope = 'coaching' }: { scope?: 'coaching' 
                 ? 'Move this bank forward once you are satisfied with its content.'
                 : bank.status === 'Coaching Review'
                   ? 'Review every question, edit anything that needs it, then finalize when ready — students see nothing until you do.'
-                  : 'Finalized — an exam using this bank can be published.'}
+                  : 'Finalized — a course using this bank can be published.'}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <Badge tone={STAGE_TONE[bank.status]}>{bank.status}</Badge>
             {scope === 'platform' && bank.status !== 'Finalized' && (
               <>

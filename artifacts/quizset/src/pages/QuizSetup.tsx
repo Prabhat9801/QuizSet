@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, ArrowRight, Layers, ListChecks, Puzzle, Rows3, Sparkles } from 'lucide-react';
-import { Link, useLocation, useRoute } from 'wouter';
+import { Link, useLocation, useRoute, useSearch } from 'wouter';
 import { Alert, Badge, Button, Card, PageHeader, Skeleton } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { attemptService, examService, questionService } from '@/services/mock';
-import { Exam, PracticeScope, Question } from '@/types';
+import { attemptService, courseService, questionService } from '@/services/api';
+import { Course, PracticeScope, Question } from '@/types';
 import { setPendingPractice } from '@/lib/practiceHandoff';
 
 type ModeOption = { mode: PracticeScope['mode']; label: string; hint: string; icon: typeof Layers };
 
 const MODES: ModeOption[] = [
-  { mode: 'full', label: 'Full exam', hint: 'Every question in this bank', icon: Sparkles },
+  { mode: 'full', label: 'Full course', hint: 'Every question in this bank', icon: Sparkles },
   { mode: 'topic', label: 'Topic-wise', hint: 'Pick one or more specific topics', icon: ListChecks },
   { mode: 'unit', label: 'Unit-wise', hint: 'Practise one whole unit at a time', icon: Rows3 },
   { mode: 'multi-unit', label: 'Multi-unit', hint: 'Combine two or more units', icon: Layers },
@@ -32,16 +32,18 @@ function poolForScope(scope: PracticeScope, all: Question[]): Question[] {
 }
 
 /**
- * Sits between "Start practice" and the actual attempt for Practice Quiz
- * exams — lets the student scope their run (Topic-wise / Unit-wise /
- * Multi-unit / Custom / Full), matching the mode picker the original
- * kundan_quiz app had, instead of always handing over the whole bank.
+ * Sits between "Start practice" and the actual attempt — lets the student
+ * scope their run (Topic-wise / Unit-wise / Multi-unit / Custom / Full),
+ * matching the mode picker the original kundan_quiz app had, instead of
+ * always handing over the whole bank. Every course goes through this —
+ * there's no other, "timed" flavor of a course attempt.
  */
 export function QuizSetup() {
-  const [, params] = useRoute('/student/exams/:id/setup');
+  const [, params] = useRoute('/student/courses/:id/setup');
   const [, navigate] = useLocation();
+  const search = new URLSearchParams(useSearch());
   const { user } = useApp();
-  const [exam, setExam] = useState<Exam | null>(null);
+  const [course, setCourse] = useState<Course | null>(null);
   const [tree, setTree] = useState<{ unit: string; topics: string[] }[] | null>(null);
   const [all, setAll] = useState<Question[]>([]);
   const [mode, setMode] = useState<PracticeScope['mode']>('full');
@@ -49,12 +51,28 @@ export function QuizSetup() {
   const [units, setUnits] = useState<string[]>([]);
   const [count, setCount] = useState('20');
 
+  // Deep-link support (e.g. from the Study Plan's "Practice this unit"
+  // action on Syllabus.tsx): ?mode=unit&unit=<name> pre-selects that mode and
+  // unit on first load, without touching the normal no-preselection default
+  // (mode stays 'full' whenever these params are absent).
+  useEffect(() => {
+    const modeParam = search.get('mode');
+    const unitParam = search.get('unit');
+    if (modeParam === 'unit' && unitParam) {
+      setMode('unit');
+      setUnits([unitParam]);
+    }
+    // Only ever applies once, on arrival — intentionally not re-run when the
+    // user changes mode/units afterwards.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!params?.id) return;
-    examService.get(params.id).then(async (e) => {
-      if (!e) return;
-      setExam(e);
-      const [t, qs] = await Promise.all([questionService.syllabusTree(e.id), questionService.listByExam(e.id)]);
+    courseService.get(params.id).then(async (c) => {
+      if (!c) return;
+      setCourse(c);
+      const [t, qs] = await Promise.all([questionService.syllabusTree(c.id), questionService.listByCourse(c.id)]);
       setTree(t);
       setAll(qs);
     });
@@ -76,7 +94,7 @@ export function QuizSetup() {
 
   const pool = useMemo(() => poolForScope(scope, all), [scope, all]);
 
-  if (!exam || !tree) return <Skeleton className="skeleton-page" />;
+  if (!course || !tree) return <Skeleton className="skeleton-page" />;
 
   const toggle = (list: string[], setList: (v: string[]) => void, value: string) => {
     setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
@@ -94,19 +112,19 @@ export function QuizSetup() {
 
   const start = async () => {
     if (!user || selectionIncomplete || pool.length === 0) return;
-    const picked = await attemptService.pickForPractice(user.id, exam.id, scope, pool, effectiveCount);
-    setPendingPractice(exam.id, { scope, questionIds: picked.map((q) => q.id) });
-    navigate(`/student/exams/${exam.id}/attempt`);
+    const picked = await attemptService.pickForPractice(user.id, course.id, scope, pool, effectiveCount);
+    setPendingPractice(course.id, { scope, questionIds: picked.map((q) => q.id) });
+    navigate(`/student/courses/${course.id}/attempt`);
   };
 
   return (
     <>
       <PageHeader
         eyebrow="Practice setup"
-        title={exam.name}
+        title={course.name}
         description="Choose what to practise before you start — your answers stay untimed either way."
         action={
-          <Link href={`/student/exams/${exam.id}`} className="btn btn-ghost">
+          <Link href={`/student/courses/${course.id}`} className="btn btn-ghost">
             <ArrowLeft size={14} /> Back
           </Link>
         }
