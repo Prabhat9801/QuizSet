@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, Layers, ListChecks, Puzzle, Rows3, Sparkles } from 'lucide-react';
 import { Link, useLocation, useRoute, useSearch } from 'wouter';
 import { Alert, Badge, Button, Card, PageHeader, Skeleton } from '@/components/ui';
@@ -38,11 +38,80 @@ function poolForScope(scope: PracticeScope, all: Question[]): Question[] {
 }
 
 /**
- * Custom mode's unit+topic tree — a collapsible list of units, each with a
- * tri-state checkbox (checked = every topic in it selected, dash = some,
- * empty = none) that expands to per-topic checkboxes underneath. Matches the
- * original kundan_quiz/quiz-ITI Setup.jsx's Custom Practice tree, including
- * the "select whole syllabus" / "clear all" bulk actions above it.
+ * Generic click-to-open, closed-by-default dropdown: a single trigger button
+ * shows the current selection summary, and the actual option list (with
+ * checkboxes) only appears while open, scrolling inside its own bounded
+ * panel. Used for every selection surface on this page (Unit/Topic pickers,
+ * Multi-unit, and Custom's tree) so nothing is ever spread out across the
+ * page the way flat chip grids were — with 48+ units and hundreds of topics,
+ * everything has to live inside a compact, collapsed-by-default control,
+ * matching the original kundan_quiz/quiz-ITI Setup.jsx's dropdown-driven
+ * layout instead of a wall of buttons.
+ */
+function SelectDropdown({ label, placeholder, children }: { label: string; placeholder: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [open]);
+
+  return (
+    <div className="select-dropdown" ref={ref}>
+      <button type="button" className="select-dropdown-trigger" onClick={() => setOpen((o) => !o)}>
+        <span>{label || placeholder}</span>
+        <ChevronDown size={14} className={open ? 'rotated' : ''} />
+      </button>
+      {open && <div className="select-dropdown-panel">{children}</div>}
+    </div>
+  );
+}
+
+/** Single-select list inside a SelectDropdown — used by Topic-wise's Unit and
+ * Topic pickers, and Unit-wise's single Unit picker. Shows a radio-style
+ * check on the active item rather than a real checkbox, since only one item
+ * can ever be selected here. */
+function SingleSelectList({ options, value, onChange }: { options: { value: string; label: string }[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="select-dropdown-list">
+      {options.map((o) => (
+        <label className="select-dropdown-option" key={o.value}>
+          <input type="radio" checked={value === o.value} onChange={() => onChange(o.value)} />
+          <span>{o.label}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+/** Multi-select checkbox list inside a SelectDropdown — used by Multi-unit's
+ * unit picker. */
+function MultiSelectList({ options, value, onChange }: { options: { value: string; label: string }[]; value: string[]; onChange: (v: string[]) => void }) {
+  const toggle = (v: string) => onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
+  return (
+    <div className="select-dropdown-list">
+      {options.map((o) => (
+        <label className="select-dropdown-option" key={o.value}>
+          <input type="checkbox" checked={value.includes(o.value)} onChange={() => toggle(o.value)} />
+          <span>{o.label}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Custom mode's unit+topic tree, rendered INSIDE a SelectDropdown's panel
+ * rather than spread across the page — a tri-state checkbox per unit
+ * (checked = every topic in it selected, dash = some, empty = none) that
+ * expands to per-topic checkboxes underneath. Matches the original
+ * kundan_quiz/quiz-ITI Setup.jsx's Custom Practice tree, including the
+ * "select whole syllabus" / "clear all" bulk actions above it.
  */
 function CustomTree({
   tree,
@@ -66,17 +135,14 @@ function CustomTree({
     setExpanded(next);
   };
 
-  const topicsInUnit = (u: { unit: string; topics: string[] }) => u.topics;
-  const selectedCountFor = (u: { unit: string; topics: string[] }) => topicsInUnit(u).filter((t) => topics.includes(t)).length;
+  const selectedCountFor = (u: { unit: string; topics: string[] }) => u.topics.filter((t) => topics.includes(t)).length;
 
   const toggleUnit = (u: { unit: string; topics: string[] }) => {
     const allSelected = selectedCountFor(u) === u.topics.length;
     if (allSelected) {
-      // Fully selected -> clear this unit's topics (and the unit chip itself).
       setTopics(topics.filter((t) => !u.topics.includes(t)));
       setUnits(units.filter((x) => x !== u.unit));
     } else {
-      // None or partially selected -> select every topic in this unit.
       setTopics([...topics.filter((t) => !u.topics.includes(t)), ...u.topics]);
       setUnits(units.includes(u.unit) ? units : [...units, u.unit]);
     }
@@ -84,9 +150,6 @@ function CustomTree({
 
   const toggleTopic = (unit: string, topic: string) => {
     setTopics(topics.includes(topic) ? topics.filter((t) => t !== topic) : [...topics, topic]);
-    // Keep the unit chip in sync so unit-level filtering (poolForScope's
-    // 'custom' OR-match) reflects "every topic in this unit" once complete,
-    // and drops out again the moment any one topic is unchecked.
     const unitTopics = tree.find((u) => u.unit === unit)?.topics ?? [];
     const willBeFullySelected = unitTopics.every((t) => (t === topic ? !topics.includes(t) : topics.includes(t)));
     if (willBeFullySelected && !units.includes(unit)) setUnits([...units, unit]);
@@ -112,40 +175,42 @@ function CustomTree({
           Clear all
         </Button>
       </div>
-      {tree.map((u) => {
-        const selected = selectedCountFor(u);
-        const triState = selected === 0 ? 'none' : selected === u.topics.length ? 'checked' : 'partial';
-        const isOpen = expanded.has(u.unit);
-        return (
-          <div className="tree-unit" key={u.unit}>
-            <div className="tree-unit-head">
-              <button type="button" className="tree-chevron" onClick={() => toggleExpanded(u.unit)} aria-label={isOpen ? 'Collapse' : 'Expand'}>
-                {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </button>
-              <button type="button" className={`tree-checkbox ${triState}`} onClick={() => toggleUnit(u)} aria-label={`Toggle all topics in ${u.unit}`}>
-                {triState === 'checked' && '✓'}
-                {triState === 'partial' && '–'}
-              </button>
-              <span className="tree-unit-name" onClick={() => toggleExpanded(u.unit)}>
-                {u.unit}
-              </span>
-              <span className="tree-unit-count">
-                {selected}/{u.topics.length} topics
-              </span>
-            </div>
-            {isOpen && (
-              <div className="tree-topics">
-                {u.topics.map((t) => (
-                  <label className="tree-topic" key={t}>
-                    <input type="checkbox" checked={topics.includes(t)} onChange={() => toggleTopic(u.unit, t)} />
-                    <span>{t}</span>
-                  </label>
-                ))}
+      <div className="select-dropdown-list">
+        {tree.map((u) => {
+          const selected = selectedCountFor(u);
+          const triState = selected === 0 ? 'none' : selected === u.topics.length ? 'checked' : 'partial';
+          const isOpen = expanded.has(u.unit);
+          return (
+            <div className="tree-unit" key={u.unit}>
+              <div className="tree-unit-head">
+                <button type="button" className="tree-chevron" onClick={() => toggleExpanded(u.unit)} aria-label={isOpen ? 'Collapse' : 'Expand'}>
+                  {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </button>
+                <button type="button" className={`tree-checkbox ${triState}`} onClick={() => toggleUnit(u)} aria-label={`Toggle all topics in ${u.unit}`}>
+                  {triState === 'checked' && '✓'}
+                  {triState === 'partial' && '–'}
+                </button>
+                <span className="tree-unit-name" onClick={() => toggleExpanded(u.unit)}>
+                  {u.unit}
+                </span>
+                <span className="tree-unit-count">
+                  {selected}/{u.topics.length} topics
+                </span>
               </div>
-            )}
-          </div>
-        );
-      })}
+              {isOpen && (
+                <div className="tree-topics">
+                  {u.topics.map((t) => (
+                    <label className="tree-topic" key={t}>
+                      <input type="checkbox" checked={topics.includes(t)} onChange={() => toggleTopic(u.unit, t)} />
+                      <span>{t}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -166,6 +231,7 @@ export function QuizSetup() {
   const [tree, setTree] = useState<{ unit: string; topics: string[] }[] | null>(null);
   const [all, setAll] = useState<Question[]>([]);
   const [mode, setMode] = useState<PracticeScope['mode']>('full');
+  const [topicUnit, setTopicUnit] = useState(''); // Topic-wise's own Unit dropdown — separate from Unit-wise's `units` selection
   const [topics, setTopics] = useState<string[]>([]);
   const [units, setUnits] = useState<string[]>([]);
   const [count, setCount] = useState('20');
@@ -222,19 +288,29 @@ export function QuizSetup() {
 
   if (!course || !tree) return <Skeleton className="skeleton-page" />;
 
-  const toggle = (list: string[], setList: (v: string[]) => void, value: string) => {
-    setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
-  };
-
   const changeMode = (next: PracticeScope['mode']) => {
     setMode(next);
     setTopics([]);
     setUnits(next === 'unit' ? [] : units);
+    setTopicUnit('');
   };
+
+  const topicsOfSelectedUnit = tree.find((u) => u.unit === topicUnit)?.topics ?? [];
 
   const requestedCount = Math.max(1, Number(count) || 1);
   const effectiveCount = Math.min(requestedCount, pool.length);
   const selectionIncomplete = (mode === 'topic' && topics.length === 0) || (mode === 'unit' && units.length === 0) || (mode === 'multi-unit' && units.length < 2) || (mode === 'custom' && topics.length === 0 && units.length === 0);
+
+  // Clamp the count field down whenever the max shrinks below what's
+  // currently typed — never fight the user mid-typing by clamping up.
+  useEffect(() => {
+    if (pool.length === 0) return;
+    setCount((prev) => {
+      const n = Number(prev);
+      if (!n) return prev;
+      return n > pool.length ? String(pool.length) : prev;
+    });
+  }, [pool.length]);
 
   const start = async () => {
     if (!user || selectionIncomplete || pool.length === 0) return;
@@ -279,35 +355,55 @@ export function QuizSetup() {
         <Card>
           <div className="card-title">
             <div>
-              <h2>Topics</h2>
-              <p>Select one or more topics across any unit.</p>
+              <h2>Topic-wise</h2>
+              <p>Pick a unit first, then a topic from inside it.</p>
             </div>
           </div>
-          <div className="chip-grid">
-            {tree.flatMap((u) => u.topics).map((t) => (
-              <button key={t} className={`chip ${topics.includes(t) ? 'selected' : ''}`} onClick={() => toggle(topics, setTopics, t)}>
-                {t}
-              </button>
-            ))}
+          <div className="setup-dropdown-row">
+            <SelectDropdown label={topicUnit} placeholder="-- Choose a unit --">
+              <SingleSelectList
+                options={tree.map((u) => ({ value: u.unit, label: u.unit }))}
+                value={topicUnit}
+                onChange={(v) => {
+                  setTopicUnit(v);
+                  setTopics([]);
+                }}
+              />
+            </SelectDropdown>
+            {topicUnit && (
+              <SelectDropdown label={topics[0] ?? ''} placeholder="-- Choose a topic --">
+                <SingleSelectList options={topicsOfSelectedUnit.map((t) => ({ value: t, label: t }))} value={topics[0] ?? ''} onChange={(v) => setTopics([v])} />
+              </SelectDropdown>
+            )}
           </div>
         </Card>
       )}
 
-      {(mode === 'unit' || mode === 'multi-unit') && (
+      {mode === 'unit' && (
         <Card>
           <div className="card-title">
             <div>
-              <h2>Units</h2>
-              <p>{mode === 'unit' ? 'Pick the one unit you want to focus on.' : 'Pick two or more units to combine.'}</p>
+              <h2>Unit-wise</h2>
+              <p>Pick the one unit you want to focus on.</p>
             </div>
           </div>
-          <div className="chip-grid">
-            {tree.map((u) => (
-              <button key={u.unit} className={`chip ${units.includes(u.unit) ? 'selected' : ''}`} onClick={() => toggle(units, setUnits, u.unit)}>
-                {u.unit}
-              </button>
-            ))}
+          <SelectDropdown label={units[0] ?? ''} placeholder="-- Choose a unit --">
+            <SingleSelectList options={tree.map((u) => ({ value: u.unit, label: `${u.unit} (${u.topics.length} topics)` }))} value={units[0] ?? ''} onChange={(v) => setUnits([v])} />
+          </SelectDropdown>
+        </Card>
+      )}
+
+      {mode === 'multi-unit' && (
+        <Card>
+          <div className="card-title">
+            <div>
+              <h2>Multi-unit</h2>
+              <p>Pick two or more units to combine.</p>
+            </div>
           </div>
+          <SelectDropdown label={units.length > 0 ? `${units.length} unit${units.length === 1 ? '' : 's'} selected` : ''} placeholder="-- Choose units --">
+            <MultiSelectList options={tree.map((u) => ({ value: u.unit, label: `${u.unit} (${u.topics.length} topics)` }))} value={units} onChange={setUnits} />
+          </SelectDropdown>
         </Card>
       )}
 
@@ -315,11 +411,16 @@ export function QuizSetup() {
         <Card>
           <div className="card-title">
             <div>
-              <h2>Select topics</h2>
+              <h2>Custom</h2>
               <p>Mix specific units and topics — check a unit to grab everything in it, or expand to pick individual topics.</p>
             </div>
           </div>
-          <CustomTree tree={tree} topics={topics} units={units} setTopics={setTopics} setUnits={setUnits} />
+          <SelectDropdown
+            label={topics.length > 0 || units.length > 0 ? `${new Set([...units, ...tree.filter((u) => topics.some((t) => u.topics.includes(t))).map((u) => u.unit)]).size} unit(s), ${topics.length} topic(s)` : ''}
+            placeholder="-- Choose units/topics --"
+          >
+            <CustomTree tree={tree} topics={topics} units={units} setTopics={setTopics} setUnits={setUnits} />
+          </SelectDropdown>
         </Card>
       )}
 
@@ -327,11 +428,20 @@ export function QuizSetup() {
         <div className="card-title">
           <div>
             <h2>How many questions</h2>
-            <p>{pool.length} question{pool.length === 1 ? '' : 's'} available for this selection.</p>
+            <p>
+              Number of questions {pool.length > 0 && <span className="muted-hint">(max {pool.length} available)</span>}
+            </p>
           </div>
           <Badge tone={pool.length === 0 ? 'danger' : 'info'}>{pool.length === 0 ? 'No match' : `${effectiveCount} picked`}</Badge>
         </div>
-        <input className="form-input" style={{ maxWidth: 160 }} value={count} onChange={(e) => setCount(e.target.value)} inputMode="numeric" />
+        <input
+          className="form-input"
+          style={{ maxWidth: 160 }}
+          value={count}
+          onChange={(e) => setCount(e.target.value)}
+          onBlur={() => setCount((prev) => String(Math.max(1, Math.min(Number(prev) || 1, pool.length || 1))))}
+          inputMode="numeric"
+        />
         {selectionIncomplete && <Alert tone="warning">Make a selection above to continue.</Alert>}
         {!selectionIncomplete && pool.length === 0 && <Alert tone="danger">No questions match this selection yet.</Alert>}
       </Card>

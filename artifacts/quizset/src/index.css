@@ -558,6 +558,25 @@ button, a, input, select, textarea { outline-color: hsl(var(--ring)); }
 .tree-unit-count{margin-left:auto;color:hsl(var(--muted-foreground));font-size:11px;font-variant-numeric:tabular-nums}
 .tree-topics{display:grid;gap:7px;padding-left:26px;margin-top:8px}
 .tree-topic{display:flex;align-items:center;gap:9px;font-size:12px;color:hsl(var(--muted-foreground));cursor:pointer}.tree-topic input{accent-color:hsl(var(--primary));width:16px;height:16px}
+
+/* Dropdown-driven pickers (QuizSetup.tsx SelectDropdown) — replace flat chip
+   grids for Unit/Topic/Multi-unit/Custom so 48+ units and hundreds of topics
+   stay inside a compact, collapsed-by-default control instead of spreading
+   across the page. The panel owns the one scroll container (max-height +
+   overflow-y); .select-dropdown-list stays a plain layout grid so Custom
+   mode's nested .tree-unit rows never end up inside a second, competing
+   scroll area. */
+.setup-dropdown-row{display:flex;flex-wrap:wrap;gap:12px}
+.select-dropdown{position:relative;display:block;min-width:240px;max-width:100%}
+.select-dropdown-trigger{width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid hsl(var(--input));background:hsl(var(--card));color:hsl(var(--foreground));border-radius:9px;padding:10px 12px;font-size:13px;cursor:pointer}
+.select-dropdown-trigger svg{color:hsl(var(--muted-foreground));transition:transform .15s;flex:none}
+.select-dropdown-trigger svg.rotated{transform:rotate(180deg)}
+.select-dropdown-panel{position:absolute;top:calc(100% + 4px);left:0;z-index:40;min-width:100%;width:max-content;max-width:min(420px,90vw);background:hsl(var(--card));border:1px solid hsl(var(--border));border-radius:10px;box-shadow:0 12px 30px rgba(20,30,70,.13);padding:6px;max-height:320px;overflow-y:auto}
+.select-dropdown-list{display:grid;gap:2px}
+.select-dropdown-option{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;font-size:12.5px;cursor:pointer;color:hsl(var(--foreground))}
+.select-dropdown-option:hover{background:hsl(var(--muted))}
+.select-dropdown-option input{accent-color:hsl(var(--primary));width:16px;height:16px;flex:none}
+.muted-hint{color:hsl(var(--muted-foreground));font-weight:normal}
 .timer-minutes-row{display:flex;align-items:center;gap:8px}
 .set-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:8px}
 .set-tile{position:relative;border:1px solid hsl(var(--border));background:hsl(var(--card));border-radius:9px;padding:10px;text-align:center;font-size:12px;font-weight:700;cursor:pointer;color:hsl(var(--foreground))}

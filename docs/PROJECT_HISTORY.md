@@ -492,3 +492,40 @@ Same demo tenant, several real bugs found via actual usage (not just code review
   syllabus"/"Clear all" bulk actions above the tree. Topic-wise/Unit-wise/Multi-unit modes keep their
   existing flat chip pickers — only Custom needed the tree, since it's the only mode mixing both
   granularities at once.
+
+---
+
+## 2026-08-11 (later same day) — QuizSetup rebuilt as dropdowns, matching the ORIGINAL apps exactly
+
+The previous entry's flat chip pickers for Topic-wise/Unit-wise/Multi-unit were a misreading of the
+research — re-checked `kundan_quiz/src/pages/Setup.jsx` directly against the user's own description and
+found the real pattern is dropdown-driven, not chip-driven. With 48+ units and hundreds of topics, a
+flat button grid is genuinely unusable (the exact complaint that triggered this correction) — a
+`<select>` (or, here, a custom dropdown) is what makes that many options navigable.
+
+- **Topic-wise**: now two chained dropdowns — Unit first, then a Topic dropdown scoped to whichever
+  unit was picked (empty/disabled until a unit is chosen), matching `Setup.jsx`'s `topicUnitId` →
+  `topicId` two-step exactly.
+- **Unit-wise**: one single-select dropdown (unit name + its topic count shown inline), replacing the
+  flat chip grid.
+- **Multi-unit**: a multi-select dropdown (checkboxes inside the dropdown's panel), replacing the flat
+  chip grid — same underlying multi-select capability as before, just collapsed into a compact control
+  instead of spread across the page.
+- **Custom**: the tri-state tree built in the previous entry is unchanged in behavior, but now rendered
+  *inside* a dropdown's panel too, per explicit request ("dropdown me checkbox rakho... pura topics and
+  units spread mat karo") — the tree no longer sits directly on the page; it only appears once the
+  dropdown is opened, scrolling inside a fixed `max-height` panel.
+- New shared components in `QuizSetup.tsx`: `SelectDropdown` (a generic click-to-open panel with an
+  outside-click-to-close listener), `SingleSelectList` (radio-style, for Topic-wise/Unit-wise),
+  `MultiSelectList` (checkbox-style, for Multi-unit). `CustomTree` (from the previous entry) is
+  unchanged, just nested inside a `SelectDropdown` now instead of rendered directly.
+- **"(max N available)" hint restored** on the question-count field, matching `Setup.jsx`'s
+  `maxAvailable` behavior — shows the real pool size for whatever's currently selected, and the input
+  auto-clamps down (never up, so it doesn't fight the user mid-typing) if the selection shrinks below
+  what's currently typed.
+- CSS added for the new dropdown pattern (`.select-dropdown`, `.select-dropdown-trigger`,
+  `.select-dropdown-panel`, `.select-dropdown-list`, `.select-dropdown-option`, `.setup-dropdown-row`,
+  `.muted-hint`) — the scroll container is `.select-dropdown-panel` alone (fixed `max-height:320px`),
+  not also on `.select-dropdown-list`, to avoid a double scrollbar when Custom mode's tree is nested
+  inside it. `.chip`/`.chip-grid` were left untouched since other pages (`Syllabus.tsx`, `Public.tsx`)
+  still use them.
