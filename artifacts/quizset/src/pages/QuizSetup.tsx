@@ -286,6 +286,22 @@ export function QuizSetup() {
 
   const pool = useMemo(() => poolForScope(scope, all), [scope, all]);
 
+  // Clamp the count field down whenever the max shrinks below what's
+  // currently typed — never fight the user mid-typing by clamping up.
+  // Kept ABOVE the `!course || !tree` early return below: every hook in a
+  // component must run on every render regardless of any conditional return
+  // that follows it, or React throws "rendered fewer hooks than expected"
+  // (error #310) the moment `course`/`tree` finish loading and the early
+  // return stops firing — this hook would then appear "new" on that render.
+  useEffect(() => {
+    if (pool.length === 0) return;
+    setCount((prev) => {
+      const n = Number(prev);
+      if (!n) return prev;
+      return n > pool.length ? String(pool.length) : prev;
+    });
+  }, [pool.length]);
+
   if (!course || !tree) return <Skeleton className="skeleton-page" />;
 
   const changeMode = (next: PracticeScope['mode']) => {
@@ -300,17 +316,6 @@ export function QuizSetup() {
   const requestedCount = Math.max(1, Number(count) || 1);
   const effectiveCount = Math.min(requestedCount, pool.length);
   const selectionIncomplete = (mode === 'topic' && topics.length === 0) || (mode === 'unit' && units.length === 0) || (mode === 'multi-unit' && units.length < 2) || (mode === 'custom' && topics.length === 0 && units.length === 0);
-
-  // Clamp the count field down whenever the max shrinks below what's
-  // currently typed — never fight the user mid-typing by clamping up.
-  useEffect(() => {
-    if (pool.length === 0) return;
-    setCount((prev) => {
-      const n = Number(prev);
-      if (!n) return prev;
-      return n > pool.length ? String(pool.length) : prev;
-    });
-  }, [pool.length]);
 
   const start = async () => {
     if (!user || selectionIncomplete || pool.length === 0) return;

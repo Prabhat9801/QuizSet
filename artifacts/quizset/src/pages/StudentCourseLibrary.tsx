@@ -32,7 +32,15 @@ export function StudentCourses() {
 
 function StudentMarketCard({ course }: { course: CourseWithCount }) {
   const { user } = useApp();
-  const purchased = course.sale === 0 || (user ? paymentService.hasPurchased(user.id, 'course', course.id) : false);
+  // paymentService.hasPurchased() is a synchronous stub that always returns
+  // false (see that method's own comment) — using it here made every real
+  // purchase look unpurchased on this card forever. hasPurchasedAsync() is
+  // the real, server-backed check.
+  const [purchased, setPurchased] = useState(course.sale === 0);
+  useEffect(() => {
+    if (course.sale === 0 || !user) return;
+    paymentService.hasPurchasedAsync(user.id, 'course', course.id).then(setPurchased);
+  }, [course.sale, course.id, user]);
   return (
     <Card className="exam-card market-card">
       <div className="exam-accent" />
@@ -73,14 +81,29 @@ export function CourseDetail() {
   const [pay, setPay] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [done, setDone] = useState(false);
+  const [purchased, setPurchased] = useState(false);
 
   useEffect(() => {
     if (params?.id) courseService.getWithCount(params.id).then((c) => setCourse(c || null));
   }, [params?.id]);
 
-  if (!course || !user) return <Skeleton className="skeleton-page" />;
+  // Real, server-backed purchase check — paymentService.hasPurchased() is a
+  // synchronous stub that always returns false (see that method's own
+  // comment), which made a real purchase look unpurchased on this page
+  // forever. Kept above the `!course || !user` early return below: every
+  // hook must run on every render regardless of a later conditional return,
+  // or React throws "rendered fewer hooks than expected" once course/user
+  // finish loading and that early return stops firing.
+  useEffect(() => {
+    if (!course || !user) return;
+    if (course.sale === 0) {
+      setPurchased(true);
+      return;
+    }
+    paymentService.hasPurchasedAsync(user.id, 'course', course.id).then(setPurchased);
+  }, [course, user]);
 
-  const purchased = course.sale === 0 || paymentService.hasPurchased(user.id, 'course', course.id);
+  if (!course || !user) return <Skeleton className="skeleton-page" />;
 
   const buy = async () => {
     setProcessing(true);

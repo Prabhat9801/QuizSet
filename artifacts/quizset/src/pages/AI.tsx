@@ -111,7 +111,11 @@ export function StudentAI() {
     if (!tenantId || !user) return;
     chatbotConfigService.get(tenantId).then(setConfig);
     chatbotUsageService.get(tenantId, user.id).then((u) => setUsage(u.messageCount));
-    setUnlocked(paymentService.hasPurchased(user.id, 'chatbot', tenantId));
+    // hasPurchased() is a synchronous stub that always returns false (see
+    // its own comment in payments.ts) — using it here made a real chatbot
+    // purchase look unpurchased forever. hasPurchasedAsync() is the real,
+    // server-backed check.
+    paymentService.hasPurchasedAsync(user.id, 'chatbot', tenantId).then(setUnlocked);
   }, [tenantId, user]);
 
   if (!config || !user || !tenantId) return null;
