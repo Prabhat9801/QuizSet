@@ -1,16 +1,44 @@
-import { useEffect, useState } from 'react';
-import { Link, useRoute } from 'wouter';
-import { ArrowLeft, Check, Clock3, FileText, MessageSquareQuote, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useRoute } from 'wouter';
+import { ArrowLeft, Check, Clock3, FileText, MessageSquareQuote, RotateCcw, Target, X } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, Field, PageHeader, Skeleton, Stat } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { attemptService, courseService, testimonialService, type CourseWithCount } from '@/services/api';
-import { Attempt, Course, Question, Testimonial } from '@/types';
+import { attemptService, computeTopicBreakdown, courseService, questionService, testimonialService, type CourseWithCount } from '@/services/api';
+import { Attempt, Course, PracticeScope, Question, Testimonial } from '@/types';
 import { formatTimer } from '@/lib/format';
+import { setPendingPractice } from '@/lib/practiceHandoff';
+
+/** The 7 user-facing labels a student's attempt can be categorised under —
+ * used for both the ResultsHistory mode filter and the per-row badge, so the
+ * two always agree on what an attempt "is". */
+const MODE_LABELS = ['Topic-wise', 'Unit-wise', 'Multi-unit', 'Custom', 'Full course', 'Practice Sets', 'Live Test'] as const;
+type ModeLabel = (typeof MODE_LABELS)[number];
+
+function modeLabel(a: Attempt): ModeLabel {
+  if (a.mode === 'timed' || a.liveTestId) return 'Live Test';
+  switch (a.practiceScope?.mode) {
+    case 'topic':
+      return 'Topic-wise';
+    case 'unit':
+      return 'Unit-wise';
+    case 'multi-unit':
+      return 'Multi-unit';
+    case 'custom':
+      return 'Custom';
+    case 'set':
+      return 'Practice Sets';
+    case 'full':
+    default:
+      return 'Full course';
+  }
+}
 
 /** History list — the page that couldn't exist before, because attempts were never saved anywhere. */
 export function ResultsHistory() {
   const { user } = useApp();
   const [rows, setRows] = useState<(Attempt & { courseName: string })[] | null>(null);
+  const [courseFilter, setCourseFilter] = useState('All');
+  const [modeFilter, setModeFilter] = useState('All');
 
   useEffect(() => {
     if (!user) return;
@@ -22,38 +50,164 @@ export function ResultsHistory() {
     });
   }, [user]);
 
+  // Distinct courses the student actually has attempts in — derived from
+  // the fetched rows themselves (each already carries a denormalized
+  // courseName), so no separate course-list fetch is needed just for this.
+  const courseOptions = useMemo(() => {
+    if (!rows) return [];
+    const byId = new Map<string, string>();
+    rows.forEach((r) => byId.set(r.courseId, r.courseName));
+    return Array.from(byId.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    if (!rows) return [];
+    return rows.filter((r) => (courseFilter === 'All' || r.courseId === courseFilter) && (modeFilter === 'All' || modeLabel(r) === modeFilter));
+  }, [rows, courseFilter, modeFilter]);
+
   if (!rows) return <Skeleton className="skeleton-page" />;
 
   return (
     <>
       <PageHeader eyebrow="Your progress" title="Results" description="Every attempt is a useful signal for your next one." />
+
+      <OverallWeakTopics attempts={rows} />
+
       {rows.length === 0 ? (
         <Card>
           <EmptyState title="No attempts yet" description="Take a practice quiz or an exam to see your results here." />
         </Card>
       ) : (
-        <div className="result-list">
-          {rows.map((r) => {
-            const pct = r.totalAttempted ? Math.round((r.score / r.totalAttempted) * 100) : 0;
-            return (
-              <Link href={`/student/results/${r.id}`} key={r.id} className="result-row-link">
-                <Card className="result-row">
-                  <div>
-                    <b>{r.courseName}</b>
-                    <small>
-                      {new Date(r.createdAt).toLocaleDateString('en-IN')} · {r.totalAttempted} question{r.totalAttempted === 1 ? '' : 's'}
-                    </small>
-                  </div>
-                  <span className={`result-score-pill ${pct >= 70 ? 'good' : pct >= 40 ? 'ok' : 'bad'}`}>{pct}%</span>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
+        <>
+          <div className="filter-bar">
+            <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)} data-testid="select-filter-course">
+              <option value="All">All courses</option>
+              {courseOptions.map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </select>
+            <select value={modeFilter} onChange={(e) => setModeFilter(e.target.value)} data-testid="select-filter-mode">
+              <option value="All">All modes</option>
+              {MODE_LABELS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <span className="filter-count">
+              {filteredRows.length} of {rows.length}
+            </span>
+          </div>
+
+          {filteredRows.length === 0 ? (
+            <Card>
+              <EmptyState title="No attempts match" description="Try a different course or mode." />
+            </Card>
+          ) : (
+            <div className="result-list">
+              {filteredRows.map((r) => {
+                const pct = r.totalAttempted ? Math.round((r.score / r.totalAttempted) * 100) : 0;
+                return (
+                  <Link href={`/student/results/${r.id}`} key={r.id} className="result-row-link">
+                    <Card className="result-row">
+                      <div>
+                        <b>{r.courseName}</b>
+                        <small>
+                          {new Date(r.createdAt).toLocaleDateString('en-IN')} · {r.totalAttempted} question{r.totalAttempted === 1 ? '' : 's'}
+                        </small>
+                        <div style={{ marginTop: 6 }}>
+                          <Badge tone="neutral">{modeLabel(r)}</Badge>
+                        </div>
+                      </div>
+                      <span className={`result-score-pill ${pct >= 70 ? 'good' : pct >= 40 ? 'ok' : 'bad'}`}>{pct}%</span>
+                    </Card>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
       <ShareStoryCard />
     </>
+  );
+}
+
+/**
+ * Overall (all courses, unaffected by the Task 1 filters) recommended focus
+ * areas — reuses computeTopicBreakdown, but that needs the full question
+ * pool for every course the student has ever attempted, so we fetch each
+ * distinct course's bank once and merge them into one array before calling it.
+ */
+function OverallWeakTopics({ attempts }: { attempts: Attempt[] }) {
+  const [rows, setRows] = useState<{ unit: string; topic: string; attempted: number; correct: number; courseId: string }[] | null>(null);
+
+  useEffect(() => {
+    if (attempts.length < 2) {
+      setRows([]);
+      return;
+    }
+    const courseIds = Array.from(new Set(attempts.map((a) => a.courseId)));
+    Promise.all(courseIds.map((id) => questionService.listByCourse(id))).then((pools) => {
+      const allQuestions = pools.flat();
+      const breakdown = computeTopicBreakdown(attempts, allQuestions);
+      // computeTopicBreakdown doesn't carry courseId (it aggregates purely by
+      // unit/topic), so re-derive which course each topic belongs to from the
+      // per-course pools we just fetched, for the "Practice this" deep link.
+      const courseIdByUnitTopic = new Map<string, string>();
+      courseIds.forEach((cid, i) => {
+        pools[i].forEach((q) => {
+          const key = `${q.unit}::${q.topic}`;
+          if (!courseIdByUnitTopic.has(key)) courseIdByUnitTopic.set(key, cid);
+        });
+      });
+      setRows(breakdown.map((r) => ({ ...r, courseId: courseIdByUnitTopic.get(`${r.unit}::${r.topic}`) || courseIds[0] })));
+    });
+  }, [attempts]);
+
+  if (rows === null) return null;
+  if (attempts.length < 2) return null;
+
+  const worst = rows
+    .filter((r) => r.attempted >= 2)
+    .map((r) => ({ ...r, pct: r.attempted ? Math.round((r.correct / r.attempted) * 100) : 0 }))
+    .sort((a, b) => a.pct - b.pct)
+    .slice(0, 5);
+
+  if (worst.length === 0) return null;
+
+  return (
+    <Card style={{ marginBottom: 18 }}>
+      <div className="card-title">
+        <div>
+          <h2>
+            <Target size={15} style={{ verticalAlign: '-3px', marginRight: 6 }} />
+            Recommended focus areas
+          </h2>
+          <p>Across every course you've attempted — your weakest topics, worth practising next.</p>
+        </div>
+      </div>
+      <div className="activity-list">
+        {worst.map((r) => (
+          <div className="activity" key={`${r.unit}::${r.topic}`}>
+            <span className="activity-dot" />
+            <div>
+              <b>{r.topic}</b>
+              <small>
+                {r.unit} · {r.correct}/{r.attempted} correct
+              </small>
+            </div>
+            <Badge tone={r.pct >= 40 ? 'warning' : 'danger'}>{r.pct}%</Badge>
+            <Link href={`/student/courses/${r.courseId}/setup?mode=unit&unit=${encodeURIComponent(r.unit)}`} className="text-link">
+              Practice this
+            </Link>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -196,7 +350,27 @@ export function CoachingAttemptReview() {
   return <AttemptReviewBody attemptId={params.id} backHref={`/coaching/courses/${params.courseId}/students`} backLabel="Back to student dashboard" />;
 }
 
+/** This attempt's own topics-to-review — a small local group-by, deliberately
+ * NOT computeTopicBreakdown (that's for aggregating many attempts; a single
+ * attempt just needs its own questions grouped by unit+topic). */
+function attemptWeakTopics(attempt: Attempt, questions: Question[]) {
+  const rows = new Map<string, { unit: string; topic: string; correct: number; incorrect: number }>();
+  questions.forEach((q, i) => {
+    const chosen = attempt.answers[i];
+    if (chosen === undefined) return; // skipped — doesn't count toward right/wrong for this breakdown
+    const key = `${q.unit}::${q.topic}`;
+    if (!rows.has(key)) rows.set(key, { unit: q.unit, topic: q.topic, correct: 0, incorrect: 0 });
+    const row = rows.get(key)!;
+    if (chosen === q.answer) row.correct += 1;
+    else row.incorrect += 1;
+  });
+  const all = Array.from(rows.values());
+  const weak = all.filter((r) => r.correct < r.incorrect || r.correct === 0);
+  return { all, weak };
+}
+
 function AttemptReviewBody({ attemptId, backHref, backLabel }: { attemptId: string; backHref: string; backLabel: string }) {
+  const [, navigate] = useLocation();
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [course, setCourse] = useState<Course | null>(null);
   const [questions, setQuestions] = useState<Question[] | null>(null);
@@ -219,6 +393,22 @@ function AttemptReviewBody({ attemptId, backHref, backLabel }: { attemptId: stri
   const wrong = attempt.totalAttempted - attempt.score;
   const skipped = questions.length - attempt.totalAttempted;
 
+  // Retry only makes sense for a repeatable practice run — a Live Test is a
+  // one-time scheduled event, so it never gets this button.
+  const canRetry = attempt.mode === 'practice' && !attempt.liveTestId && !!attempt.practiceScope;
+
+  const retry = () => {
+    if (!attempt.practiceScope) return;
+    // Deliberately bypasses attemptService.pickForPractice (the no-repeat
+    // endpoint) entirely — we hand Attempt.tsx the SAME questionIds, in the
+    // SAME order, that this attempt already recorded, via the same one-shot
+    // sessionStorage handoff QuizSetup uses for a freshly-picked run.
+    setPendingPractice(attempt.courseId, { scope: attempt.practiceScope, questionIds: attempt.questionIds });
+    navigate(`/student/courses/${attempt.courseId}/attempt`);
+  };
+
+  const { weak } = attemptWeakTopics(attempt, questions);
+
   return (
     <div className="exam-interface">
       <div className="exam-top">
@@ -240,9 +430,16 @@ function AttemptReviewBody({ attemptId, backHref, backLabel }: { attemptId: stri
             <p>
               You answered {attempt.totalAttempted} of {questions.length} questions in {formatTimer(attempt.timeTakenSeconds)}.
             </p>
-            <Link href={backHref} className="btn btn-secondary">
-              <ArrowLeft size={14} /> {backLabel}
-            </Link>
+            <div className="form-actions" style={{ justifyContent: 'flex-start', paddingTop: 0 }}>
+              <Link href={backHref} className="btn btn-secondary">
+                <ArrowLeft size={14} /> {backLabel}
+              </Link>
+              {canRetry && (
+                <Button variant="secondary" onClick={retry} data-testid="button-retry-attempt">
+                  <RotateCcw size={14} /> Retry this quiz
+                </Button>
+              )}
+            </div>
           </div>
         </div>
         <div className="stats-grid">
@@ -279,6 +476,34 @@ function AttemptReviewBody({ attemptId, backHref, backLabel }: { attemptId: stri
             );
           })}
         </div>
+
+        <Card style={{ marginTop: 18 }}>
+          <div className="card-title">
+            <div>
+              <h2>
+                <Target size={15} style={{ verticalAlign: '-3px', marginRight: 6 }} />
+                Topics to review from this attempt
+              </h2>
+            </div>
+          </div>
+          {weak.length === 0 ? (
+            <p className="modal-copy">You did well across every topic in this run!</p>
+          ) : (
+            <div className="activity-list">
+              {weak.map((r) => (
+                <div className="activity" key={`${r.unit}::${r.topic}`}>
+                  <span className="activity-dot" />
+                  <div>
+                    <b>{r.topic}</b>
+                    <small>
+                      {r.unit} · {r.correct}/{r.correct + r.incorrect} correct
+                    </small>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
       </div>
     </div>
   );

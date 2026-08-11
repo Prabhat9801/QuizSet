@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { Button, Card, EmptyState, PageHeader } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
-import { notificationService } from '@/services/mock';
+import { notificationService } from '@/services/api';
 import { Notification } from '@/types';
 
 /**
@@ -17,7 +17,7 @@ export function NotificationsPage() {
 
   const load = useCallback(async () => {
     if (!user) return;
-    setItems(await notificationService.list(user.role));
+    setItems(await notificationService.list());
   }, [user]);
 
   useEffect(() => {
@@ -26,13 +26,13 @@ export function NotificationsPage() {
 
   const markAllRead = async () => {
     if (!user) return;
-    await notificationService.markAllRead(user.role);
+    await notificationService.markAllRead();
     await load();
   };
 
   const markRead = async (id: string) => {
     if (!user) return;
-    await notificationService.markRead(user.role, id);
+    await notificationService.markRead(id);
     await load();
   };
 

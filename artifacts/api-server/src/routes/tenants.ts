@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, ilike, or } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { tenants } from "@workspace/db/schema";
+import { notifications, tenants } from "@workspace/db/schema";
 import { authenticate } from "../middlewares/auth";
 import { requireRole } from "../middlewares/authorize";
 import { badRequest, forbidden, notFound } from "../lib/http-error";
@@ -111,6 +111,16 @@ router.post("/tenants", authenticate, requireRole("platform"), async (req, res) 
         supportEmail: requireString(body.supportEmail, "supportEmail"),
       })
       .returning();
+
+    await db.insert(notifications).values({
+      role: "platform",
+      tenantId: null,
+      subjectProfileId: null,
+      kind: "coaching_signed_up",
+      title: "New coaching signed up",
+      body: `${row.name} (${row.city}) just signed up on the platform.`,
+    });
+
     res.status(201).json(row);
   } catch (err) {
     if (err instanceof Error && /duplicate key.*join_code/i.test(err.message)) {
@@ -136,6 +146,7 @@ router.patch("/tenants/:id", authenticate, requireRole("platform", "coaching"), 
   if (body.plan !== undefined) patch.plan = requireString(body.plan, "plan");
   if (body.owner !== undefined) patch.owner = requireString(body.owner, "owner");
   if (body.supportEmail !== undefined) patch.supportEmail = requireString(body.supportEmail, "supportEmail");
+  if (body.supportPhone !== undefined) patch.supportPhone = optionalString(body.supportPhone, "supportPhone") ?? null;
   if (body.joinCode !== undefined) patch.joinCode = requireString(body.joinCode, "joinCode");
   if (body.displayName !== undefined) patch.displayName = optionalString(body.displayName, "displayName") ?? null;
   if (body.logoUrl !== undefined) patch.logoUrl = optionalString(body.logoUrl, "logoUrl") ?? null;

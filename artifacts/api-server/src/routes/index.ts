@@ -15,6 +15,7 @@ import joinRequestsRouter from "./join-requests";
 import certificatesRouter from "./certificates";
 import testimonialsRouter from "./testimonials";
 import studyPlansRouter from "./study-plans";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(joinRequestsRouter);
 router.use(certificatesRouter);
 router.use(testimonialsRouter);
 router.use(studyPlansRouter);
+router.use(notificationsRouter);
 
 export default router;

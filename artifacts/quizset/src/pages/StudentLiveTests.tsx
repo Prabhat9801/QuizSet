@@ -118,7 +118,18 @@ export function LiveTestAttempt() {
       setTest(t);
       const c = await courseService.get(t.courseId);
       setCourse(c || null);
-      if (c) setQuestions(await questionService.listByCourse(c.id));
+      if (!c) return;
+      // A live test with a pre-picked scope stores its own fixed questionIds
+      // (set once at creation time by pickLiveTestQuestions() server-side) —
+      // read those specific questions instead of the whole course bank, so
+      // every student sees the exact same scoped/weighted set. Falls back to
+      // the full bank for a `mode: "full"` test or any pre-feature test row
+      // that has no questionIds yet, matching the old, only-ever-behavior.
+      if (t.questionIds && t.questionIds.length > 0) {
+        setQuestions(await questionService.listByIds(t.id));
+      } else {
+        setQuestions(await questionService.listByCourse(c.id));
+      }
     });
   }, [params?.id, user, navigate]);
 

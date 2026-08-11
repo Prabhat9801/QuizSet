@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { courses, difficultyEnum, questionBanks, questions } from "@workspace/db/schema";
+import { courses, difficultyEnum, liveTests, questionBanks, questions } from "@workspace/db/schema";
 import { authenticate } from "../middlewares/auth";
 import { canAccessTenant, requireRole } from "../middlewares/authorize";
 import { badRequest, forbidden, notFound } from "../lib/http-error";
@@ -63,6 +63,30 @@ router.get("/questions/syllabus-tree", authenticate, async (req, res) => {
   return res.json(
     Array.from(byUnit.entries()).map(([unit, { subject, topics }]) => ({ subject, unit, topics: Array.from(topics) })),
   );
+});
+
+// GET /api/questions/by-ids?liveTestId=&ids=<comma-separated uuids> — fetches
+// exactly the given question ids, for a live test's own pre-picked
+// `questionIds` list (see pickLiveTestQuestions() in live-tests.ts) instead
+// of the whole course bank. `liveTestId` is required (rather than accepting
+// a bare id list) so access is checked against the live test's tenant the
+// same way every other live-test-scoped read is, instead of trusting the
+// caller's ids blindly.
+router.get("/questions/by-ids", authenticate, async (req, res) => {
+  const liveTestId = req.query.liveTestId;
+  if (typeof liveTestId !== "string") throw badRequest("liveTestId query parameter is required.");
+  requireUuid(liveTestId, "liveTestId");
+  const [test] = await db.select().from(liveTests).where(eq(liveTests.id, liveTestId)).limit(1);
+  if (!test) throw notFound("Live test not found.");
+  if (!canAccessTenant(req.auth!, test.tenantId)) throw forbidden("You do not have access to this live test.");
+
+  const ids = test.questionIds ?? [];
+  if (ids.length === 0) return res.json([]);
+  const rows = await db.select().from(questions).where(inArray(questions.id, ids));
+  // Preserve the live test's own stored order (its own shuffle at creation
+  // time), not whatever order the DB happens to return rows in.
+  const byId = new Map(rows.map((q) => [q.id, q]));
+  return res.json(ids.map((id) => byId.get(id)).filter((q): q is typeof rows[number] => q !== undefined));
 });
 
 // POST /api/questions — platform/coaching authoring. A question bank in

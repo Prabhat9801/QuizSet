@@ -21,6 +21,25 @@ export type PracticeScope =
   // needs to round-trip through storage/history, not drive scope filtering.
   | { mode: "set"; setNumber: number };
 
+// Full question content as it existed at the moment of the attempt — text,
+// options, the correct answer index, explanation, and its subject/unit/topic
+// classification. Snapshotted onto the attempt (see `questionsSnapshot`
+// below) so a later review/PDF export/report always reflects exactly what
+// the student actually saw, even if the source question is edited or
+// deleted from the bank afterwards. Without this, reconstructing a review
+// by re-fetching the CURRENT bank state (the only option before this field
+// existed) could silently show wrong content or drop a question entirely.
+export type QuestionSnapshot = {
+  id: string;
+  text: string;
+  options: string[];
+  answer: number;
+  explanation: string;
+  subject: string;
+  unit: string;
+  topic: string;
+};
+
 // One finished quiz/live-test run. `liveTestId` is only set for a timed,
 // live-test attempt; `practiceScope` is only set for mode: 'practice'.
 export const attempts = pgTable(
@@ -44,10 +63,20 @@ export const attempts = pgTable(
     // Map of question-index (position within this attempt) to chosen
     // option-index.
     answers: jsonb("answers").notNull().$type<Record<number, number>>(),
-    // Snapshot of the exact questions attempted, in order — so a later
-    // review/PDF export reflects what was actually asked even if the bank
-    // changes afterwards.
+    // Snapshot of the exact question IDs attempted, in order — kept
+    // alongside `questionsSnapshot` below (not replaced by it) since some
+    // existing code paths (no-repeat tracking) only need the ID list, not
+    // the full content.
     questionIds: jsonb("question_ids").notNull().$type<string[]>(),
+    // Full question content at attempt time — nullable because attempts
+    // created before this column existed have no snapshot; those fall back
+    // to re-fetching from the live bank (the old, edit/delete-fragile path)
+    // exactly as they always did. Every new attempt populates this. Array
+    // elements are themselves nullable: a `null` slot means the question id
+    // at that same position in `questionIds` no longer existed in the bank
+    // at save time — the hole preserves index alignment with `answers`
+    // rather than shifting every later position out of sync.
+    questionsSnapshot: jsonb("questions_snapshot").$type<(QuestionSnapshot | null)[]>(),
     score: integer("score").notNull(),
     totalAttempted: integer("total_attempted").notNull(),
     timeTakenSeconds: integer("time_taken_seconds").notNull(),

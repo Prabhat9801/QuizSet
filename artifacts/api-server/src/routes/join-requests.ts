@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { joinRequests, profiles, tenants } from "@workspace/db/schema";
+import { joinRequests, notifications, profiles, tenants } from "@workspace/db/schema";
 import { authenticate } from "../middlewares/auth";
 import { canAccessTenant, requireRole } from "../middlewares/authorize";
 import { badRequest, conflict, forbidden, notFound } from "../lib/http-error";
@@ -74,6 +74,14 @@ router.post("/join-requests/:id/decide", authenticate, requireRole("coaching", "
 
   const [row] = await db.transaction(async (tx) => {
     await tx.update(profiles).set({ tenantId: request.tenantId, status: "Active" }).where(eq(profiles.id, matchingProfile.id));
+    await tx.insert(notifications).values({
+      role: "coaching",
+      tenantId: request.tenantId,
+      subjectProfileId: matchingProfile.id,
+      kind: "student_joined",
+      title: "New student joined",
+      body: `${matchingProfile.name} joined after their join request was approved.`,
+    });
     return tx.update(joinRequests).set({ status: "Approved" }).where(eq(joinRequests.id, id)).returning();
   });
   return res.json(row);

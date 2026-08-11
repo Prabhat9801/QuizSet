@@ -576,3 +576,93 @@ render — the standalone route is kept, not removed, so an existing bookmarked/
 works, but the mode card is now the primary way in. When `mode === 'set'`, QuizSetup swaps its
 count/timer/start footer for `PracticeSetPicker` entirely, since a set's questions are a fixed,
 deterministic slice rather than a scope the student builds.
+
+---
+
+## 2026-08-12 — Large business/reporting scope, built via 4 parallel agents
+
+User walked through a long chain of business requirements in one session — first-course-free
+commission, Live Test scope-selection matching a real exam's "pick from what's been taught" logic,
+notifications for both coachings and the platform owner, question-content snapshotting for
+tamper-proof review, and coaching support-contact/branding completeness. Given the size, the
+foundational schema was done directly, then the rest was split into 4 non-overlapping parallel
+subagent tasks (payment logic + snapshot save; notifications backend + triggers; History/Retry/weak-
+topics UI; Live Test scope selector) that all landed cleanly with zero merge conflicts and one combined
+`pnpm run typecheck` passing clean across every workspace afterward.
+
+- **Coaching's first course is commission-free.** `lib/db/schema` unchanged; `artifacts/api-server/src/
+  routes/payments.ts` now looks up whether the course being purchased is the tenant's chronologically
+  FIRST course (`min(createdAt)` among that tenant's courses) — if so, `platformSharePaise = 0` and the
+  coaching keeps 100%; every course after the first still gets the standard 50/50 split. Only applies to
+  `kind: 'course'` payments — `live_test`/`chatbot` always split 50/50 regardless. Verified against the
+  live demo tenant's real two courses (created 180ms apart, genuinely sequential — "Lab Assistant
+  (Science)" first, "ITI Electronics" second).
+- **Question content snapshotting.** `attempts.questionsSnapshot` (jsonb, `(QuestionSnapshot | null)[]`)
+  now stores each question's full text/options/answer/explanation/subject/unit/topic AT THE MOMENT of
+  the attempt, populated in `POST /api/attempts` alongside the existing `questionIds`. A `null` slot
+  (not a dropped array entry) marks a question that no longer existed in the bank at save time — this
+  preserves index alignment with `answers` (which is keyed by POSITION), so one missing question can
+  never silently shift every later question's chosen-answer pairing. Old attempts (pre-this-column)
+  keep working via the original re-fetch-from-current-bank path; only new attempts get the tamper-proof
+  snapshot.
+- **Real notifications**, replacing the mock-only `Notifications.tsx` that never actually generated
+  anything: new `notifications` table (`role`, `tenantId`, `subjectProfileId`, `kind` enum, `title`,
+  `body`, `read`) plus `GET /api/notifications` / `POST /api/notifications/:id/read` / `POST /api/
+  notifications/read-all`, each scoped so a student only ever sees notifications about themself (not
+  other students in the same tenant) — verified via an explicit SQL-condition trace during review.
+  Auto-triggers wired into the actual action points rather than a separate cron: `payment_received` +
+  `payment_split_issue` (safety-net check) in `payments.ts`; `student_joined` in both the join-by-code
+  and join-request-approval paths; `coaching_signed_up` in `POST /tenants`; `coaching_new_course` in
+  `POST /courses`, gated to only fire from the 2nd course onward (matching the first-course-free rule
+  above — the platform doesn't need a "commission now applies" notice for a course that generates no
+  commission); `live_test_ended` fires lazily the next time a coaching's live-test list is read past
+  `scheduledEnd`, de-duplicated by checking for an existing notification whose body already references
+  that test's id (a real scheduler was explicitly out of scope for this pass).
+- **Live Test scope selection** — the single biggest addition this session. A coaching creating a live
+  test can now pick "Full syllabus" (today's implicit behavior, still the default) or "Choose specific
+  scope": multi-select Subject + multi-select Unit + multi-select Topic (OR-matched, same logic as
+  Custom practice mode), reusing `QuizSetup.tsx`'s `SelectDropdown`/`SingleSelectList`/`MultiSelectList`/
+  `CustomTree` components (exported from there for this reuse) rather than duplicating them. New
+  `liveTests.scope` (jsonb `LiveTestScope`), `questionCount`, `questionIds` columns — the actual
+  question list is picked ONCE at creation time (`pickLiveTestQuestions()` in `live-tests.ts`) and
+  stored, so every student in that test sees the exact same pre-picked set, not a per-student re-roll.
+  No-repeat is scoped to the COURSE's history of past SCOPED live tests only (a full-syllabus test never
+  restricts and never counts toward another test's exclusion set) — when a scope's remaining
+  not-yet-used pool is smaller than the requested count, that bucket "restarts" by falling back to its
+  complete pool rather than failing to generate the test. Weighting: an optional manual per-unit/topic
+  question count overrides that item's share; everything else splits the remainder equally, with any
+  leftover from integer division going to the first few groups rather than being dropped. Both the
+  no-repeat-with-restart and the weight-distribution math were traced through concrete worked examples
+  during review, not just asserted. `StudentLiveTests.tsx`'s `LiveTestAttempt` now reads the test's own
+  stored `questionIds` (via new `GET /api/questions/by-ids?liveTestId=`) instead of the whole course
+  bank, falling back to the old whole-bank behavior for `mode: 'full'` or pre-feature tests that have no
+  `questionIds` set.
+- **History filter + mode badges + Retry + weak-topics, on `Results.tsx`.** Course + mode dropdowns
+  (7 mode labels: Full course/Topic-wise/Unit-wise/Multi-unit/Custom/Practice Sets/Live Test, derived
+  from `practiceScope.mode` or `liveTestId`/`mode==='timed'`) filter the already-fetched attempt list
+  client-side; every row also gets a mode badge regardless of filter state. A new "Retry this quiz"
+  button (practice attempts only, never live tests) replays the EXACT same `questionIds` via the
+  existing `practiceHandoff` mechanism — deliberately bypassing the no-repeat picking endpoint entirely,
+  since the whole point is seeing the identical questions again. Weak-topic surfacing in two places:
+  per-attempt (a small local group-by over just that attempt's own questions, not the general-purpose
+  `computeTopicBreakdown`) showing which topics this one run got wrong more often than right; and
+  overall (using the existing `computeTopicBreakdown`, previously only ever driven by the coaching's
+  class-wide dashboard) across every course the student has attempted in, surfaced as a "Recommended
+  focus areas" card linking to each weak unit's Unit-wise setup via the same `?mode=unit&unit=` deep-link
+  `Syllabus.tsx` already used — skipped entirely below 2 total attempts, since there isn't enough
+  signal yet to recommend anything.
+- **Coaching support phone + student profile page.** `tenants.supportPhone` / `profiles.phone` (both
+  nullable) added; `Branding.tsx` gained a "Support phone" field next to the existing support email;
+  `Dashboards.tsx`'s student view shows both (each conditionally rendered — a coaching that hasn't set
+  one shows no empty line). `/student/profile` (previously a placeholder `GenericPage`) is now a real
+  page: editable name + phone, read-only email (Supabase identity, not editable here). Coaching-owner's
+  OWN profile (as a person, distinct from `Branding.tsx`'s tenant-identity settings) was explicitly
+  scoped OUT of this pass and left as a known gap for later — it isn't a trivial copy of the student
+  page (different route, different "who am I" semantics, nav rewiring needed).
+- **Real password reset**, replacing the login page's fake "we'll simulate a reset link" modal:
+  `services/supabase.ts` gained `sendPasswordResetOtp`/`verifyPasswordResetOtp`/`updatePassword`, using
+  Supabase Auth's own recovery-OTP flow end to end (send 6-digit code → verify it into a real recovery
+  session → set a new password on that session) — genuinely non-functional for the mock/demo accounts
+  (no real email to send to), which now get a clear error explaining that instead of a silently-fake
+  "sent!" toast. Also added a show/hide eye-icon toggle on every password field across Login, Signup,
+  and the new reset flow's own password step.

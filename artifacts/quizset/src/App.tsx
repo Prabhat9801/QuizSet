@@ -31,6 +31,7 @@ import { PaymentsPage } from '@/pages/Payments';
 import { Branding } from '@/pages/Branding';
 import { JoinFlow } from '@/pages/JoinFlow';
 import { GenericPage } from '@/pages/GenericPage';
+import { Profile } from '@/pages/Profile';
 import { StudentCertificates, CertificateView } from '@/pages/Certificates';
 import { PlatformTestimonials } from '@/pages/Testimonials';
 import { Syllabus } from '@/pages/Syllabus';
@@ -114,7 +115,7 @@ function Router() {
         <Route path="/student/certificates">{() => <AppRoute component={StudentCertificates} roles={['student']} />}</Route>
         <Route path="/student/ai">{() => <AppRoute component={StudentAI} roles={['student']} />}</Route>
         <Route path="/student/notifications">{() => <AppRoute component={NotificationsPage} roles={['student']} />}</Route>
-        <Route path="/student/profile">{() => <AppRoute component={() => <GenericPage title="Profile" />} roles={['student']} />}</Route>
+        <Route path="/student/profile">{() => <AppRoute component={Profile} roles={['student']} />}</Route>
 
         <Route component={NotFound} />
       </Switch>

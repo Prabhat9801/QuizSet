@@ -10,6 +10,8 @@ import {
   CircleCheck,
   Clock3,
   CreditCard,
+  Eye,
+  EyeOff,
   Flag,
   GraduationCap,
   Layers,
@@ -793,7 +795,7 @@ function Price({
     </div>
   );
 }
-export function Login(){const [email,setEmail]=useState('');const [password,setPassword]=useState('');const [forgot,setForgot]=useState(false);const [error,setError]=useState('');const [loc,setLoc]=useLocation();const {login,toast}=useApp();const quick=(e:string,p:string)=>{setEmail(e);setPassword(p);submit(e,p)};
+export function Login(){const [email,setEmail]=useState('');const [password,setPassword]=useState('');const [showPassword,setShowPassword]=useState(false);const [forgot,setForgot]=useState(false);const [error,setError]=useState('');const [loc,setLoc]=useLocation();const {login,toast}=useApp();const quick=(e:string,p:string)=>{setEmail(e);setPassword(p);submit(e,p)};
   // Real Supabase sign-in coexists with the mock demo path rather than
   // replacing it: the mock path is tried first (cheap, synchronous-feeling,
   // and what the one-click demo buttons below rely on), and only on a mock
@@ -802,12 +804,68 @@ export function Login(){const [email,setEmail]=useState('');const [password,setP
   // A real sign-in that succeeds still has no way to resolve a role/tenant
   // until AppContext's session bootstrap fetches the matching profile (see
   // AppContext.tsx), so this just routes home and lets that effect take over.
-  const submit=async(e=email,p=password)=>{setError('');try{const {authService}=await import('@/services/mock');const u=await authService.login(e,p);login(u);toast('Welcome back',`Signed in as ${u.name}.`);setLoc(u.role==='platform'?'/platform/dashboard':u.role==='coaching'?'/coaching/dashboard':u.tenantId?'/student/dashboard':'/student/join');return}catch(mockErr){const {isSupabaseConfigured,signInWithPassword}=await import('@/services/supabase');if(!isSupabaseConfigured){setError((mockErr as Error).message);return}try{await signInWithPassword(e,p);toast('Welcome back','Signed in.');setLoc('/student/dashboard')}catch(realErr){setError((realErr as Error).message)}}};return <div className="login-page"><div className="login-visual"><Link href="/" className="login-brand"><span className="brand-mark">Q</span>QuizSet</Link><div className="login-copy"><div className="eyebrow" style={{color:'#82ecf7'}}>THE COACHING OPERATING SYSTEM</div><h1>Your Coaching.<br/>Your Brand.<br/><em>Your Course Platform.</em></h1><p>A calm, capable workspace for institutes that want to teach better, operate smarter and build something that lasts.</p><div className="login-points"><span>White-label by design</span><span>Built for Indian coaching</span><span>Signal-rich insights</span></div></div><small style={{color:'#8da4d5',fontSize:11}}>A focused demo workspace by QuizSet</small></div><div className="login-form-side"><div className="login-card"><div className="eyebrow">DEMO ACCESS</div><h2>Welcome back.</h2><p>Choose an account, or sign in with your demo credentials — or your real account, if this coaching has one.</p><form className="login-form" onSubmit={e=>{e.preventDefault();submit()}}><label className="field"><span>Email</span><input data-testid="input-email" value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="you@institute.in" autoComplete="email"/></label><label className="field"><span>Password</span><input data-testid="input-password" value={password} onChange={e=>setPassword(e.target.value)} type="password" placeholder="Enter password" autoComplete="current-password"/></label><div className="remember"><label><input type="checkbox" defaultChecked/> Remember me</label><button type="button" className="forgot" onClick={()=>setForgot(true)}>Forgot password?</button></div>{error&&<div className="login-error">{error}</div>}<Button data-testid="button-login" className="login-submit" type="submit">Sign in to workspace <ArrowRight size={15}/></Button></form><p className="signup-hint">New student? <Link href="/signup">Create an account</Link> and join a coaching with a code.</p><div className="demo-box"><p>One-click demo accounts</p><div className="demo-buttons"><button data-testid="button-demo-platform" onClick={()=>quick('admin@quizset.demo','admin123')}><strong>Platform Owner</strong><span>Command center · admin@quizset.demo</span></button><button data-testid="button-demo-coaching" onClick={()=>quick('owner@sunrise.demo','owner123')}><strong>Coaching Owner</strong><span>Sunrise Academy · owner@sunrise.demo</span></button><button data-testid="button-demo-student" onClick={()=>quick('rahul@student.demo','student123')}><strong>Student</strong><span>Rahul Sharma · learner workspace</span></button></div></div></div></div>{forgot&&<div className="modal-backdrop"><div className="modal"><div className="modal-head"><h3>Reset your access</h3><button className="icon-btn" onClick={()=>setForgot(false)}><X size={18}/></button></div><p className="modal-copy">Enter your email and we’ll simulate a secure reset link for this demo workspace.</p><input className="form-input" defaultValue={email} placeholder="you@institute.in"/><div className="form-actions"><Button variant="ghost" onClick={()=>setForgot(false)}>Cancel</Button><Button onClick={()=>{setForgot(false);toast('Reset link simulated','Check your inbox for the next step.','info')}}>Send reset link</Button></div></div></div>}</div>}
+  const submit=async(e=email,p=password)=>{setError('');try{const {authService}=await import('@/services/mock');const u=await authService.login(e,p);login(u);toast('Welcome back',`Signed in as ${u.name}.`);setLoc(u.role==='platform'?'/platform/dashboard':u.role==='coaching'?'/coaching/dashboard':u.tenantId?'/student/dashboard':'/student/join');return}catch(mockErr){const {isSupabaseConfigured,signInWithPassword}=await import('@/services/supabase');if(!isSupabaseConfigured){setError((mockErr as Error).message);return}try{await signInWithPassword(e,p);toast('Welcome back','Signed in.');setLoc('/student/dashboard')}catch(realErr){setError((realErr as Error).message)}}};return <div className="login-page"><div className="login-visual"><Link href="/" className="login-brand"><span className="brand-mark">Q</span>QuizSet</Link><div className="login-copy"><div className="eyebrow" style={{color:'#82ecf7'}}>THE COACHING OPERATING SYSTEM</div><h1>Your Coaching.<br/>Your Brand.<br/><em>Your Course Platform.</em></h1><p>A calm, capable workspace for institutes that want to teach better, operate smarter and build something that lasts.</p><div className="login-points"><span>White-label by design</span><span>Built for Indian coaching</span><span>Signal-rich insights</span></div></div><small style={{color:'#8da4d5',fontSize:11}}>A focused demo workspace by QuizSet</small></div><div className="login-form-side"><div className="login-card"><div className="eyebrow">DEMO ACCESS</div><h2>Welcome back.</h2><p>Choose an account, or sign in with your demo credentials — or your real account, if this coaching has one.</p><form className="login-form" onSubmit={e=>{e.preventDefault();submit()}}><label className="field"><span>Email</span><input data-testid="input-email" value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="you@institute.in" autoComplete="email"/></label><label className="field"><span>Password</span><div className="password-field"><input data-testid="input-password" value={password} onChange={e=>setPassword(e.target.value)} type={showPassword?'text':'password'} placeholder="Enter password" autoComplete="current-password"/><button type="button" className="password-toggle" onClick={()=>setShowPassword(s=>!s)} aria-label={showPassword?'Hide password':'Show password'}>{showPassword?<EyeOff size={16}/>:<Eye size={16}/>}</button></div></label><div className="remember"><label><input type="checkbox" defaultChecked/> Remember me</label><button type="button" className="forgot" onClick={()=>setForgot(true)}>Forgot password?</button></div>{error&&<div className="login-error">{error}</div>}<Button data-testid="button-login" className="login-submit" type="submit">Sign in to workspace <ArrowRight size={15}/></Button></form><p className="signup-hint">New student? <Link href="/signup">Create an account</Link> and join a coaching with a code.</p><div className="demo-box"><p>One-click demo accounts</p><div className="demo-buttons"><button data-testid="button-demo-platform" onClick={()=>quick('admin@quizset.demo','admin123')}><strong>Platform Owner</strong><span>Command center · admin@quizset.demo</span></button><button data-testid="button-demo-coaching" onClick={()=>quick('owner@sunrise.demo','owner123')}><strong>Coaching Owner</strong><span>Sunrise Academy · owner@sunrise.demo</span></button><button data-testid="button-demo-student" onClick={()=>quick('rahul@student.demo','student123')}><strong>Student</strong><span>Rahul Sharma · learner workspace</span></button></div></div></div></div>{forgot&&<ForgotPasswordModal initialEmail={email} onClose={()=>setForgot(false)} onDone={()=>{setForgot(false);toast('Password updated','Sign in with your new password.','success')}}/>}</div>}
+
+/**
+ * Real 3-step password reset, via Supabase Auth's own recovery-OTP flow
+ * (see sendPasswordResetOtp/verifyPasswordResetOtp/updatePassword in
+ * services/supabase.ts) — not a simulated toast. Only works for a REAL
+ * Supabase account (mock/demo accounts have no email to send to); a demo
+ * account attempting this gets a clear error rather than a silently-fake
+ * success.
+ *   Step 1: enter email -> send a 6-digit code.
+ *   Step 2: enter the code -> verifies it and opens a real (short-lived)
+ *           recovery session.
+ *   Step 3: enter a new password -> sets it on that now-active session.
+ */
+function ForgotPasswordModal({initialEmail,onClose,onDone}:{initialEmail:string;onClose:()=>void;onDone:()=>void}){
+  const [step,setStep]=useState<'email'|'code'|'password'>('email');
+  const [email,setEmail]=useState(initialEmail);
+  const [code,setCode]=useState('');
+  const [newPassword,setNewPassword]=useState('');
+  const [showNewPassword,setShowNewPassword]=useState(false);
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState('');
+  const sendCode=async()=>{
+    setError('');setBusy(true);
+    try{
+      const {isSupabaseConfigured,sendPasswordResetOtp}=await import('@/services/supabase');
+      if(!isSupabaseConfigured) throw new Error('Password reset needs a real account — this demo workspace has no email server configured.');
+      await sendPasswordResetOtp(email);
+      setStep('code');
+    }catch(err){setError((err as Error).message)}
+    setBusy(false);
+  };
+  const verifyCode=async()=>{
+    setError('');setBusy(true);
+    try{
+      const {verifyPasswordResetOtp}=await import('@/services/supabase');
+      await verifyPasswordResetOtp(email,code);
+      setStep('password');
+    }catch(err){setError((err as Error).message)}
+    setBusy(false);
+  };
+  const setPassword=async()=>{
+    setError('');setBusy(true);
+    try{
+      const {updatePassword}=await import('@/services/supabase');
+      await updatePassword(newPassword);
+      onDone();
+    }catch(err){setError((err as Error).message)}
+    setBusy(false);
+  };
+  return <div className="modal-backdrop"><div className="modal"><div className="modal-head"><h3>Reset your password</h3><button className="icon-btn" onClick={onClose}><X size={18}/></button></div>
+    {step==='email'&&<><p className="modal-copy">Enter your account email — we'll send a 6-digit code to reset your password.</p><input className="form-input" value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="you@institute.in"/>{error&&<div className="login-error">{error}</div>}<div className="form-actions"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button disabled={busy||!email} onClick={sendCode}>{busy?'Sending…':'Send code'}</Button></div></>}
+    {step==='code'&&<><p className="modal-copy">We sent a 6-digit code to <b>{email}</b>. Enter it below.</p><input className="form-input" value={code} onChange={e=>setCode(e.target.value)} inputMode="numeric" maxLength={6} placeholder="123456"/>{error&&<div className="login-error">{error}</div>}<div className="form-actions"><Button variant="ghost" onClick={()=>setStep('email')}>Back</Button><Button disabled={busy||code.length<6} onClick={verifyCode}>{busy?'Verifying…':'Verify code'}</Button></div></>}
+    {step==='password'&&<><p className="modal-copy">Code verified — choose a new password.</p><div className="password-field"><input className="form-input" value={newPassword} onChange={e=>setNewPassword(e.target.value)} type={showNewPassword?'text':'password'} placeholder="New password" autoComplete="new-password" minLength={6}/><button type="button" className="password-toggle" onClick={()=>setShowNewPassword(s=>!s)} aria-label={showNewPassword?'Hide password':'Show password'}>{showNewPassword?<EyeOff size={16}/>:<Eye size={16}/>}</button></div>{error&&<div className="login-error">{error}</div>}<div className="form-actions"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button disabled={busy||newPassword.length<6} onClick={setPassword}>{busy?'Saving…':'Set new password'}</Button></div></>}
+  </div></div>;
+}
 
 export function Signup() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   // Demo mode (the existing behaviour, default and unchanged) creates a
@@ -911,7 +969,12 @@ export function Signup() {
             </label>
             <label className="field">
               <span>Password</span>
-              <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" placeholder="Choose a password" autoComplete="new-password" required minLength={4} />
+              <div className="password-field">
+                <input value={password} onChange={(e) => setPassword(e.target.value)} type={showPassword ? 'text' : 'password'} placeholder="Choose a password" autoComplete="new-password" required minLength={4} />
+                <button type="button" className="password-toggle" onClick={() => setShowPassword((s) => !s)} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </label>
             {error && <div className="login-error">{error}</div>}
             {info && !error && <p className="signup-hint">{info}</p>}

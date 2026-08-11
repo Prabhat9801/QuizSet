@@ -16,6 +16,10 @@ export const profiles = pgTable(
     role: roleEnum("role").notNull(),
     name: text("name").notNull(),
     email: text("email").notNull().unique(),
+    // Optional — filled in via the student's own Profile/Settings screen,
+    // not at signup. Meaningful for every role in principle, but only
+    // students have a settings screen that asks for it today.
+    phone: text("phone"),
     // Meaningful mostly for students (Pending while a join request is
     // outstanding, Suspended to revoke access without deleting history).
     // Coaching/platform profiles are just always Active.

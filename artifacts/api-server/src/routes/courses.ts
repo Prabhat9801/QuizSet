@@ -5,8 +5,10 @@ import {
   courseAssignments,
   courses,
   courseStatusEnum,
+  notifications,
   questionBanks,
   questions,
+  tenants,
 } from "@workspace/db/schema";
 import { authenticate } from "../middlewares/auth";
 import { canAccessTenant, requireRole } from "../middlewares/authorize";
@@ -138,6 +140,27 @@ router.post("/courses", authenticate, requireRole("coaching", "platform"), async
       subject: optionalString(body.subject, "subject") ?? "General",
     })
     .returning();
+
+  // "2nd+ course" notification, mirroring the first-course-free commission
+  // rule in payments.ts (a tenant's chronologically oldest course is free;
+  // every course after that pays commission). Counting ALL courses for this
+  // tenant (including the one just inserted) and firing only when that
+  // count is > 1 means this never fires for the first course, and fires
+  // exactly once per course from the 2nd onward (each POST creates exactly
+  // one new row, so the count crosses each threshold exactly once).
+  const tenantCourses = await db.select({ id: courses.id }).from(courses).where(eq(courses.tenantId, tenantId));
+  if (tenantCourses.length > 1) {
+    const [tenant] = await db.select({ name: tenants.name }).from(tenants).where(eq(tenants.id, tenantId)).limit(1);
+    await db.insert(notifications).values({
+      role: "platform",
+      tenantId: null,
+      subjectProfileId: null,
+      kind: "coaching_new_course",
+      title: "Coaching created a new course — commission now applies",
+      body: `${tenant?.name ?? "A coaching"} created "${row.name}" — their ${tenantCourses.length}${tenantCourses.length === 2 ? "nd" : "th"} course, so the standard commission split now applies.`,
+    });
+  }
+
   res.status(201).json({ ...row, questionCount: 0 });
 });
 

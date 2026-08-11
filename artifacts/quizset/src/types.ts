@@ -21,6 +21,9 @@ export type Tenant = {
   joinCode: string;
   owner: string;
   supportEmail: string;
+  // Optional — a coaching that hasn't set a support number yet just omits it
+  // from wherever it's shown, rather than displaying a placeholder.
+  supportPhone?: string;
 };
 
 // A coaching's exam-preparation offering — e.g. "SSC CGL 2026 preparation".
@@ -149,6 +152,17 @@ export type JoinRequest = {
   createdAt: string;
 };
 
+// What a coaching picked as the question source for a live test — mirrors
+// the backend's `LiveTestScope` (see `lib/db/src/schema/live-tests.ts`).
+// `mode: "full"` = the whole course bank, no no-repeat tracking. `mode:
+// "scoped"` = subjects/units/topics OR-matched (same OR semantics as
+// PracticeScope's 'custom' mode), with no-repeat tracked against past
+// SCOPED live tests on the same course only. `weights` is an optional map
+// of unit/topic name -> explicit question count; absent = equal split.
+export type LiveTestScope =
+  | { mode: 'full' }
+  | { mode: 'scoped'; subjects: string[]; units: string[]; topics: string[]; weights?: Record<string, number> };
+
 // `status` is the coaching's own publish control. The user-facing phase
 // (Upcoming / Live / Ended) is always derived from the time window at read
 // time via `liveTestPhase()` in services/mock.ts — never stored — so it can
@@ -164,6 +178,13 @@ export type LiveTest = {
   price: number;
   status: 'Draft' | 'Published' | 'Cancelled';
   participantIds: string[]; // student ids invited; empty = open to all tenant students
+  // Scope picker + resulting pre-picked question list — all optional/
+  // undefined for a test created before this feature, or one that never set
+  // a scope (both read as "whole course bank", same as pre-feature
+  // behavior; see StudentLiveTests.tsx's LiveTestAttempt fallback).
+  scope?: LiveTestScope;
+  questionCount?: number;
+  questionIds?: string[];
 };
 
 export type LiveTestPhase = 'Draft' | 'Upcoming' | 'Live' | 'Ended' | 'Cancelled';
@@ -185,6 +206,22 @@ export type PracticeScope =
   // quiz-ITI apps. `setNumber` is 1-indexed, matching their "Set N" labeling.
   | { mode: 'set'; setNumber: number };
 
+// Full question content as it existed at the moment of the attempt — mirrors
+// the backend's `QuestionSnapshot` (see `lib/db/src/schema/attempts.ts`).
+// Snapshotted onto the attempt so a later review/PDF export/report always
+// reflects exactly what the student actually saw, even if the source
+// question is edited or deleted from the bank afterwards.
+export type QuestionSnapshot = {
+  id: string;
+  text: string;
+  options: string[];
+  answer: number;
+  explanation: string;
+  subject: string;
+  unit: string;
+  topic: string;
+};
+
 // One finished quiz/course/live-test run, saved so history/review/leaderboard
 // have a real record to read from instead of recomputing from nothing.
 export type Attempt = {
@@ -197,6 +234,12 @@ export type Attempt = {
   practiceScope?: PracticeScope; // only set for mode: 'practice'
   answers: Record<number, number>; // question index -> chosen option index
   questionIds: string[]; // snapshot of the exact questions attempted, in order
+  // Full question content at attempt time, same order as `questionIds`. A
+  // `null` slot means that question id no longer existed in the bank when
+  // the attempt was saved (index alignment with `answers` is preserved by
+  // leaving a hole rather than dropping the slot). Optional/undefined for
+  // attempts saved before this field existed.
+  questionsSnapshot?: (QuestionSnapshot | null)[];
   score: number; // correct count
   totalAttempted: number;
   timeTakenSeconds: number;

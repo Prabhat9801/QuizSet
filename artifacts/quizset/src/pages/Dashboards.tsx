@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowUpRight, BookOpen, FileText, IndianRupee, Play, Plus, Sparkles, Users } from 'lucide-react';
+import { ArrowUpRight, BookOpen, FileText, IndianRupee, Mail, Phone, Play, Plus, Sparkles, Users } from 'lucide-react';
 import { Link } from 'wouter';
 import { Card, PageHeader, Stat, Badge, Button } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
@@ -226,6 +226,29 @@ export function StudentDashboard() {
               View live tests <ArrowUpRight size={13} />
             </Link>
           </Card>
+          {(tenant.supportEmail || tenant.supportPhone) && (
+            <>
+              <div className="section-spacer" />
+              <Card>
+                <div className="card-title">
+                  <div>
+                    <h2>Need help?</h2>
+                    <p>Reach {tenant.name} directly</p>
+                  </div>
+                </div>
+                {tenant.supportEmail && (
+                  <p className="text-link" style={{ pointerEvents: 'none' }}>
+                    <Mail size={13} /> {tenant.supportEmail}
+                  </p>
+                )}
+                {tenant.supportPhone && (
+                  <p className="text-link" style={{ pointerEvents: 'none' }}>
+                    <Phone size={13} /> {tenant.supportPhone}
+                  </p>
+                )}
+              </Card>
+            </>
+          )}
         </div>
       </div>
     </>

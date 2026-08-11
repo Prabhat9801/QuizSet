@@ -22,6 +22,7 @@
 //   certificates.ts             - manually issued, branding-snapshotted certs
 //   testimonials.ts             - student feedback pending dual approval
 //   study-plans.ts               - per-course schedule (manual/auto) for finishing the syllabus
+//   notifications.ts             - auto-triggered alerts (payments, inactivity, weak performance, etc.)
 //   relations.ts                - drizzle relations() for the query API
 //
 // `courses.ts` / `question-banks.ts` / `question-bank-requests.ts` import
@@ -46,4 +47,5 @@ export * from "./join-requests";
 export * from "./certificates";
 export * from "./testimonials";
 export * from "./study-plans";
+export * from "./notifications";
 export * from "./relations";

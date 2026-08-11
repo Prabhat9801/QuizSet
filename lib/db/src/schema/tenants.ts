@@ -23,6 +23,10 @@ export const tenants = pgTable(
     joinCode: text("join_code").notNull().unique(),
     owner: text("owner").notNull(),
     supportEmail: text("support_email").notNull(),
+    // Optional — a coaching that hasn't set a support number yet just omits
+    // it from wherever it's shown (student-facing footer/help screens),
+    // rather than displaying a placeholder.
+    supportPhone: text("support_phone"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

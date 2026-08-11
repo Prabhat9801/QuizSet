@@ -1,4 +1,4 @@
-import type { Attempt, PracticeScope, Question } from '@/types';
+import type { Attempt, PracticeScope, Question, QuestionSnapshot } from '@/types';
 import { apiGet, apiPost, ApiError } from './http';
 
 type AttemptApiRow = {
@@ -11,6 +11,7 @@ type AttemptApiRow = {
   practiceScope: PracticeScope | null;
   answers: Record<number, number>;
   questionIds: string[];
+  questionsSnapshot: (QuestionSnapshot | null)[] | null;
   score: number;
   totalAttempted: number;
   timeTakenSeconds: number;
@@ -35,6 +36,7 @@ function mapAttempt(row: AttemptApiRow): Attempt {
     practiceScope: row.practiceScope ?? undefined,
     answers: row.answers,
     questionIds: row.questionIds,
+    questionsSnapshot: row.questionsSnapshot ?? undefined,
     score: row.score,
     totalAttempted: row.totalAttempted,
     timeTakenSeconds: row.timeTakenSeconds,

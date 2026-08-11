@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { profiles, tenants } from "@workspace/db/schema";
+import { notifications, profiles, tenants } from "@workspace/db/schema";
 import { authenticate, extractBearerToken, verifySupabaseJwt } from "../middlewares/auth";
 import { canAccessTenant } from "../middlewares/authorize";
 import { badRequest, conflict, forbidden, notFound } from "../lib/http-error";
@@ -82,11 +82,21 @@ router.post("/profiles/me/join", authenticate, async (req, res) => {
     .set({ tenantId: tenant.id })
     .where(eq(profiles.id, req.auth!.userId))
     .returning();
+
+  await db.insert(notifications).values({
+    role: "coaching",
+    tenantId: tenant.id,
+    subjectProfileId: profile.id,
+    kind: "student_joined",
+    title: "New student joined",
+    body: `${profile.name} joined via join code.`,
+  });
+
   res.json({ profile, tenant });
 });
 
-// PATCH /api/profiles/:id — name/email/status only. Deliberately does NOT
-// accept `role` or `tenantId` here: those are identity/security-sensitive
+// PATCH /api/profiles/:id — name/email/phone/status only. Deliberately does
+// NOT accept `role` or `tenantId` here: those are identity/security-sensitive
 // and change through their own dedicated flows (join-requests deciding
 // tenantId, no endpoint at all changes role) — never a generic profile edit,
 // mirroring the "role/tenantId are immutable via a generic update" invariant
@@ -104,11 +114,13 @@ router.patch("/profiles/:id", authenticate, async (req, res) => {
 
   const name = optionalString(req.body.name, "name");
   const email = optionalString(req.body.email, "email");
+  const phone = optionalString(req.body.phone, "phone");
   const status = optionalOneOf(req.body.status, ["Active", "Pending", "Suspended"] as const, "status");
 
   const patch: Partial<typeof existing> = {};
   if (name !== undefined) patch.name = name;
   if (email !== undefined) patch.email = email;
+  if (phone !== undefined) patch.phone = phone;
   if (status !== undefined) patch.status = status;
   if (Object.keys(patch).length === 0) throw badRequest("No updatable fields provided.");
 

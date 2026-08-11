@@ -20,6 +20,12 @@ export const questionService = {
     return apiGet<{ subject: string; unit: string; topics: string[] }[]>('/api/questions/syllabus-tree', { courseId });
   },
 
+  /** A live test's own pre-picked question list (see `LiveTest.questionIds`)
+   * — order-preserving, scoped to that test's tenant server-side. */
+  async listByIds(liveTestId: string): Promise<Question[]> {
+    return apiGet<Question[]>('/api/questions/by-ids', { liveTestId });
+  },
+
   async create(
     data: Partial<Question> & { questionBankId: string; text: string; options: string[]; answer: number },
   ): Promise<Question> {

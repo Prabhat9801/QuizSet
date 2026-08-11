@@ -54,7 +54,7 @@ function poolForScope(scope: PracticeScope, all: Question[]): Question[] {
  * matching the original kundan_quiz/quiz-ITI Setup.jsx's dropdown-driven
  * layout instead of a wall of buttons.
  */
-function SelectDropdown({ label, placeholder, children }: { label: string; placeholder: string; children: React.ReactNode }) {
+export function SelectDropdown({ label, placeholder, children }: { label: string; placeholder: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -82,7 +82,7 @@ function SelectDropdown({ label, placeholder, children }: { label: string; place
  * Topic pickers, and Unit-wise's single Unit picker. Shows a radio-style
  * check on the active item rather than a real checkbox, since only one item
  * can ever be selected here. */
-function SingleSelectList({ options, value, onChange }: { options: { value: string; label: string }[]; value: string; onChange: (v: string) => void }) {
+export function SingleSelectList({ options, value, onChange }: { options: { value: string; label: string }[]; value: string; onChange: (v: string) => void }) {
   return (
     <div className="select-dropdown-list">
       {options.map((o) => (
@@ -97,7 +97,7 @@ function SingleSelectList({ options, value, onChange }: { options: { value: stri
 
 /** Multi-select checkbox list inside a SelectDropdown — used by Multi-unit's
  * unit picker. */
-function MultiSelectList({ options, value, onChange }: { options: { value: string; label: string }[]; value: string[]; onChange: (v: string[]) => void }) {
+export function MultiSelectList({ options, value, onChange }: { options: { value: string; label: string }[]; value: string[]; onChange: (v: string[]) => void }) {
   const toggle = (v: string) => onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
   return (
     <div className="select-dropdown-list">
@@ -119,7 +119,7 @@ function MultiSelectList({ options, value, onChange }: { options: { value: strin
  * kundan_quiz/quiz-ITI Setup.jsx's Custom Practice tree, including the
  * "select whole syllabus" / "clear all" bulk actions above it.
  */
-function CustomTree({
+export function CustomTree({
   tree,
   topics,
   units,

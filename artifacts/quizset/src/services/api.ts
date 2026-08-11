@@ -36,9 +36,6 @@
  *
  * Intentionally NOT implemented here, each for a specific reason:
  *   - authService        — out of scope, see the auth seam note above.
- *   - notificationService — the given route plan defines no notifications
- *     endpoints whatsoever. Guessing a shape against zero information would
- *     be worse than leaving it out; this needs a real route plan first.
  *
  * ---------------------------------------------------------------------------
  * Field mismatches between the Drizzle schema and frontend types.ts
@@ -99,3 +96,5 @@ export { joinRequestService } from './api/joinRequests';
 export { certificateService } from './api/certificates';
 export { testimonialService } from './api/testimonials';
 export { studyPlanService } from './api/studyPlans';
+export { notificationService } from './api/notifications';
+export { profileService, type ProfileApiRow } from './api/profiles';

@@ -1,4 +1,4 @@
-import type { LiveTest, LiveTestPhase } from '@/types';
+import type { LiveTest, LiveTestPhase, LiveTestScope } from '@/types';
 import { apiGet, apiPatch, apiPost, apiPut, ApiError } from './http';
 import { paiseToRupees, rupeesToPaise } from './money';
 
@@ -12,6 +12,9 @@ type LiveTestApiRow = {
   durationMinutes: number;
   pricePaise: number;
   status: LiveTest['status'];
+  scope: LiveTestScope | null;
+  questionCount: number | null;
+  questionIds: string[] | null;
   createdAt: string;
   // The real route also attaches a computed `phase` field — see phaseOf() in
   // live-tests.ts. We ignore it and recompute locally in phase() below so
@@ -33,6 +36,9 @@ function mapLiveTest(row: LiveTestApiRow, participantIds: string[]): LiveTest {
     price: paiseToRupees(row.pricePaise),
     status: row.status,
     participantIds,
+    scope: row.scope ?? undefined,
+    questionCount: row.questionCount ?? undefined,
+    questionIds: row.questionIds ?? undefined,
   };
 }
 
@@ -74,6 +80,10 @@ export const liveTestService = {
       durationMinutes: data.durationMinutes,
       pricePaise: data.price !== undefined ? rupeesToPaise(data.price) : undefined,
       status: data.status,
+      // Both omitted -> server treats this as `mode: "full"` with no
+      // pre-picked questionIds, matching pre-feature behavior exactly.
+      scope: data.scope,
+      questionCount: data.questionCount,
     });
     if (data.participantIds && data.participantIds.length > 0) {
       await putParticipantIds(row.id, data.participantIds);

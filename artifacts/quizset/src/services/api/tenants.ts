@@ -15,6 +15,7 @@ type TenantApiRow = {
   joinCode: string;
   owner: string;
   supportEmail: string;
+  supportPhone: string | null;
   createdAt: string;
 };
 
@@ -62,6 +63,7 @@ function mapTenant(row: TenantApiRow, students: number): Tenant {
     joinCode: row.joinCode,
     owner: row.owner,
     supportEmail: row.supportEmail,
+    supportPhone: row.supportPhone ?? undefined,
   };
 }
 
@@ -144,6 +146,7 @@ export const tenantService = {
     if (data.joinCode !== undefined) body.joinCode = data.joinCode;
     if (data.owner !== undefined) body.owner = data.owner;
     if (data.supportEmail !== undefined) body.supportEmail = data.supportEmail;
+    if (data.supportPhone !== undefined) body.supportPhone = data.supportPhone;
     const row = await apiPatch<TenantApiRow>(`/api/tenants/${id}`, body);
     return mapTenant(row, await studentCountFor(id));
   },

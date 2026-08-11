@@ -9,6 +9,7 @@ import {
   profiles,
   questions,
   type PracticeScope,
+  type QuestionSnapshot,
 } from "@workspace/db/schema";
 import { authenticate, type AuthContext } from "../middlewares/auth";
 import { canAccessTenant, requireRole } from "../middlewares/authorize";
@@ -119,6 +120,29 @@ router.post("/attempts", authenticate, requireRole("student"), async (req, res) 
     if (q && q.answer === value) score += 1;
   }
 
+  // Build the full-content snapshot IN THE SAME ORDER as `questionIds` —
+  // `answers` is keyed by POSITION in that array, so the snapshot array's
+  // positions must line up with it exactly (snapshot[i] must describe the
+  // same question as questionIds[i]). If a question id no longer exists in
+  // the bank (e.g. deleted between pick and save), we insert `null` at that
+  // position rather than dropping it — dropping would shift every LATER
+  // index left and silently mismatch answers[i] against the wrong question
+  // for every subsequent slot. `null` is a safe, order-preserving gap.
+  const questionsSnapshot: (QuestionSnapshot | null)[] = (questionIds as string[]).map((qid) => {
+    const q = byId.get(qid);
+    if (!q) return null; // question vanished from the bank — leave a hole, don't shift indices
+    return {
+      id: q.id,
+      text: q.text,
+      options: q.options,
+      answer: q.answer,
+      explanation: q.explanation,
+      subject: q.subject,
+      unit: q.unit,
+      topic: q.topic,
+    };
+  });
+
   const [row] = await db
     .insert(attempts)
     .values({
@@ -130,6 +154,7 @@ router.post("/attempts", authenticate, requireRole("student"), async (req, res) 
       practiceScope: practiceScope ?? null,
       answers,
       questionIds: questionIds as string[],
+      questionsSnapshot,
       score,
       totalAttempted: optionalInt(body.totalAttempted, "totalAttempted") ?? Object.keys(answers).length,
       timeTakenSeconds: requireInt(body.timeTakenSeconds, "timeTakenSeconds"),

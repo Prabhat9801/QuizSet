@@ -108,6 +108,34 @@ export async function signInWithPassword(email: string, password: string): Promi
   return { session: data.session ?? null };
 }
 
+/** Sends a real password-reset email via Supabase Auth — a genuine 6-digit
+ * OTP code (Supabase's default email template for this flow), not a
+ * simulated toast. `verifyPasswordResetOtp`/`updatePasswordWithSession`
+ * below complete the flow once the student has that code. */
+export async function sendPasswordResetOtp(email: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase is not configured (missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).');
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  if (error) throw error;
+}
+
+/** Verifies the 6-digit code from the reset email and returns a real,
+ * signed-in session for that account — the standard Supabase "recovery" OTP
+ * flow. The caller then immediately calls `updatePassword` while this
+ * session is active to actually set the new password. */
+export async function verifyPasswordResetOtp(email: string, code: string): Promise<{ session: Session | null }> {
+  if (!supabase) throw new Error('Supabase is not configured (missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).');
+  const { data, error } = await supabase.auth.verifyOtp({ email, token: code, type: 'recovery' });
+  if (error) throw error;
+  return { session: data.session ?? null };
+}
+
+/** Sets a new password for the currently-active (just-verified) session. */
+export async function updatePassword(newPassword: string): Promise<void> {
+  if (!supabase) throw new Error('Supabase is not configured (missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).');
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+}
+
 /** Signs out of the real Supabase session. No-op when Supabase isn't configured. */
 export async function signOut(): Promise<void> {
   if (!supabase) return;

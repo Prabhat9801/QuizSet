@@ -22,7 +22,7 @@ function randomJoinCode(name: string): string {
  */
 export function Branding() {
   const { tenant, tenantId, toast, refreshTenants } = useApp();
-  const [form, setForm] = useState({ name: tenant.name, supportEmail: tenant.supportEmail, primaryColor: tenant.primaryColor, secondaryColor: tenant.secondaryColor, welcome: 'Prepare with intent. Your next score starts here.' });
+  const [form, setForm] = useState({ name: tenant.name, supportEmail: tenant.supportEmail, supportPhone: tenant.supportPhone || '', primaryColor: tenant.primaryColor, secondaryColor: tenant.secondaryColor, welcome: 'Prepare with intent. Your next score starts here.' });
   const [saving, setSaving] = useState(false);
 
   const [joinCode, setJoinCode] = useState(tenant.joinCode);
@@ -32,7 +32,7 @@ export function Branding() {
   const save = async () => {
     if (!tenantId) return;
     setSaving(true);
-    await tenantService.update(tenantId, { name: form.name, supportEmail: form.supportEmail, primaryColor: form.primaryColor, secondaryColor: form.secondaryColor });
+    await tenantService.update(tenantId, { name: form.name, supportEmail: form.supportEmail, supportPhone: form.supportPhone, primaryColor: form.primaryColor, secondaryColor: form.secondaryColor });
     await refreshTenants();
     setSaving(false);
     toast('Branding saved', 'Your students see this the moment they next load a page.');
@@ -82,6 +82,9 @@ export function Branding() {
             </Field>
             <Field label="Support email">
               <input className="form-input" value={form.supportEmail} onChange={(e) => setForm({ ...form, supportEmail: e.target.value })} />
+            </Field>
+            <Field label="Support phone">
+              <input className="form-input" value={form.supportPhone} onChange={(e) => setForm({ ...form, supportPhone: e.target.value })} placeholder="e.g. 98765 43210" />
             </Field>
             <Field label="Primary color">
               <input className="form-input color-field" type="color" value={form.primaryColor} onChange={(e) => setForm({ ...form, primaryColor: e.target.value })} />
