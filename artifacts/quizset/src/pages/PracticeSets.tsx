@@ -26,36 +26,33 @@ function maxSetsFor(subject: string): number {
  * Practice Sets page. Unlike QuizSetup's scoped modes, a set's question list
  * is computed once here and handed straight to the attempt — no server pick
  * needed, since it's fully deterministic from the course's real question pool.
+ *
+ * Shared between the standalone `/practice-sets` route below AND QuizSetup's
+ * "Practice Sets" mode card, which renders this same picker inline as its
+ * selector rather than sending the student to a separate page — every other
+ * mode (Topic-wise, Unit-wise, etc.) works that way too, so Practice Sets
+ * shouldn't be the only mode that navigates elsewhere just to pick a scope.
  */
-export function PracticeSets() {
-  const [, params] = useRoute('/student/courses/:id/practice-sets');
-  const [, navigate] = useLocation();
+export function PracticeSetPicker({ course, all }: { course: Course; all: Question[] }) {
   const { user } = useApp();
-  const [course, setCourse] = useState<Course | null>(null);
-  const [all, setAll] = useState<Question[]>([]);
+  const [, navigate] = useLocation();
   const [completed, setCompleted] = useState<Set<number>>(new Set());
   const [openSet, setOpenSet] = useState<number | null>(null);
   const [timerEnabled, setTimerEnabled] = useState(true);
   const [timerMinutes, setTimerMinutes] = useState('90');
 
   useEffect(() => {
-    if (!params?.id || !user) return;
-    courseService.get(params.id).then(async (c) => {
-      if (!c) return;
-      setCourse(c);
-      setAll(await questionService.listByCourse(c.id));
-      const attempts = await attemptService.listForStudent(user.id);
+    if (!user) return;
+    attemptService.listForStudent(user.id).then((attempts) => {
       const done = new Set<number>();
       for (const a of attempts) {
-        if (a.courseId === c.id && a.practiceScope?.mode === 'set') done.add(a.practiceScope.setNumber);
+        if (a.courseId === course.id && a.practiceScope?.mode === 'set') done.add(a.practiceScope.setNumber);
       }
       setCompleted(done);
     });
-  }, [params?.id, user]);
+  }, [course.id, user]);
 
-  const totalSets = useMemo(() => (course ? practiceSetCount(all.length, maxSetsFor(course.subject)) : 0), [course, all.length]);
-
-  if (!course || all.length === 0) return <Skeleton className="skeleton-page" />;
+  const totalSets = useMemo(() => practiceSetCount(all.length, maxSetsFor(course.subject)), [course.subject, all.length]);
 
   const start = (setNumber: number) => {
     const questions = getPracticeSet(all, setNumber);
@@ -64,36 +61,28 @@ export function PracticeSets() {
     navigate(`/student/courses/${course.id}/attempt`);
   };
 
+  if (totalSets === 0) return <Alert tone="warning">This course's question bank isn't large enough yet for a fixed 100-question set.</Alert>;
+
   return (
     <>
-      <PageHeader
-        eyebrow="Practice sets"
-        title={course.name}
-        description={`${totalSets} fixed sets, 100 questions each — the same set every time, so retrying "Set 5" always means the same 100 questions.`}
-        action={
-          <Link href={`/student/courses/${course.id}`} className="btn btn-ghost">
-            <ArrowLeft size={14} /> Back
-          </Link>
-        }
-      />
-
-      <Card>
-        <div className="set-grid">
-          {Array.from({ length: totalSets }, (_, i) => i + 1).map((n) => (
-            <button key={n} className={`set-tile ${openSet === n ? 'selected' : ''}`} onClick={() => setOpenSet(openSet === n ? null : n)}>
-              {completed.has(n) && (
-                <span className="set-tile-check">
-                  <CheckCircle2 size={12} />
-                </span>
-              )}
-              Set {n}
-            </button>
-          ))}
-        </div>
-      </Card>
+      <p className="muted-hint" style={{ marginBottom: 14, display: 'block' }}>
+        {totalSets} fixed sets, 100 questions each — the same set every time, so retrying "Set 5" always means the same 100 questions.
+      </p>
+      <div className="set-grid">
+        {Array.from({ length: totalSets }, (_, i) => i + 1).map((n) => (
+          <button key={n} className={`set-tile ${openSet === n ? 'selected' : ''}`} onClick={() => setOpenSet(openSet === n ? null : n)}>
+            {completed.has(n) && (
+              <span className="set-tile-check">
+                <CheckCircle2 size={12} />
+              </span>
+            )}
+            Set {n}
+          </button>
+        ))}
+      </div>
 
       {openSet !== null && (
-        <Card>
+        <div className="set-detail">
           <div className="card-title">
             <div>
               <h2>Practice Set {openSet} — 100 questions</h2>
@@ -123,10 +112,46 @@ export function PracticeSets() {
               Start Set {openSet} <ArrowRight size={14} />
             </Button>
           </div>
-        </Card>
+        </div>
       )}
+    </>
+  );
+}
 
-      {totalSets === 0 && <Alert tone="warning">This course's question bank isn't large enough yet for a fixed 100-question set.</Alert>}
+/** Standalone page — still linked from CourseDetail for a direct way in,
+ * kept alongside the inline QuizSetup mode rather than removed, since a
+ * bookmarked/shared link to it should keep working. */
+export function PracticeSets() {
+  const [, params] = useRoute('/student/courses/:id/practice-sets');
+  const [course, setCourse] = useState<Course | null>(null);
+  const [all, setAll] = useState<Question[]>([]);
+
+  useEffect(() => {
+    if (!params?.id) return;
+    courseService.get(params.id).then(async (c) => {
+      if (!c) return;
+      setCourse(c);
+      setAll(await questionService.listByCourse(c.id));
+    });
+  }, [params?.id]);
+
+  if (!course || all.length === 0) return <Skeleton className="skeleton-page" />;
+
+  return (
+    <>
+      <PageHeader
+        eyebrow="Practice sets"
+        title={course.name}
+        description="Fixed, pre-baked worksheets — pick a set below."
+        action={
+          <Link href={`/student/courses/${course.id}`} className="btn btn-ghost">
+            <ArrowLeft size={14} /> Back
+          </Link>
+        }
+      />
+      <Card>
+        <PracticeSetPicker course={course} all={all} />
+      </Card>
     </>
   );
 }

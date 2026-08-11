@@ -68,10 +68,16 @@ export type Question = {
   options: string[];
   answer: number;
   explanation: string;
-  // Unit is the broad syllabus section (e.g. "Quantitative Aptitude");
-  // topic is the specific concept within it (e.g. "Percentage"). This
-  // two-level hierarchy is what Topic-wise / Unit-wise practice modes group
-  // by — without it those modes would have nothing real to filter on.
+  // Subject is the broadest grouping (e.g. "Chemistry", "Physics", "Maths")
+  // for banks that mix more than one — the Practice Setup screen's Subject
+  // dropdown filters units/topics down to one subject first. Defaults to
+  // "General" for single-subject banks, where a subject picker would be
+  // redundant. Unit is the next syllabus section within that subject (e.g.
+  // "Chemical Kinetics"); topic is the specific concept within it (e.g.
+  // "Half-Life Period"). This hierarchy is what Topic-wise / Unit-wise
+  // practice modes group by — without it those modes would have nothing
+  // real to filter on.
+  subject: string;
   unit: string;
   topic: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';

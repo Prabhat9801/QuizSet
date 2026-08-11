@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, Layers, ListChecks, Puzzle, Rows3, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, Layers, ListChecks, ListOrdered, Puzzle, Rows3, Sparkles } from 'lucide-react';
 import { Link, useLocation, useRoute, useSearch } from 'wouter';
 import { Alert, Badge, Button, Card, PageHeader, Skeleton } from '@/components/ui';
 import { useApp } from '@/contexts/AppContext';
 import { attemptService, courseService, questionService } from '@/services/api';
 import { Course, PracticeScope, Question } from '@/types';
 import { setPendingPractice } from '@/lib/practiceHandoff';
+import { PracticeSetPicker } from '@/pages/PracticeSets';
 
 type ModeOption = { mode: PracticeScope['mode']; label: string; hint: string; icon: typeof Layers };
 
@@ -15,6 +16,11 @@ const MODES: ModeOption[] = [
   { mode: 'unit', label: 'Unit-wise', hint: 'Practise one whole unit at a time', icon: Rows3 },
   { mode: 'multi-unit', label: 'Multi-unit', hint: 'Combine two or more units', icon: Layers },
   { mode: 'custom', label: 'Custom', hint: 'Mix specific units and topics', icon: Puzzle },
+  // Always last — Practice Sets is a fixed, pre-baked worksheet rather than
+  // a scope you build, so it reads as the "different kind of thing" option
+  // at the end, matching the order requested: Full/Topic/Unit/Multi/Custom
+  // first (the build-your-own-scope modes), Practice Sets last.
+  { mode: 'set', label: 'Practice Sets', hint: 'Fixed 100-question worksheets, same set every time', icon: ListOrdered },
 ];
 
 function poolForScope(scope: PracticeScope, all: Question[]): Question[] {
@@ -228,9 +234,14 @@ export function QuizSetup() {
   const search = new URLSearchParams(useSearch());
   const { user } = useApp();
   const [course, setCourse] = useState<Course | null>(null);
-  const [tree, setTree] = useState<{ unit: string; topics: string[] }[] | null>(null);
+  const [tree, setTree] = useState<{ subject: string; unit: string; topics: string[] }[] | null>(null);
   const [all, setAll] = useState<Question[]>([]);
   const [mode, setMode] = useState<PracticeScope['mode']>('full');
+  // Which subject's units are currently in scope for Topic-wise/Unit-wise/
+  // Multi-unit/Custom — a mixed bank (Chemistry+Physics+Maths) needs this
+  // filter before a unit dropdown is even navigable; a single-subject bank
+  // (e.g. ITI Electronics) just has one subject, so the picker is a no-op.
+  const [subject, setSubject] = useState('');
   const [topicUnit, setTopicUnit] = useState(''); // Topic-wise's own Unit dropdown — separate from Unit-wise's `units` selection
   const [topics, setTopics] = useState<string[]>([]);
   const [units, setUnits] = useState<string[]>([]);
@@ -277,14 +288,23 @@ export function QuizSetup() {
       case 'custom':
         return { mode: 'custom', topics, units };
       case 'set':
-        // Unreachable — this setup screen's MODES list never offers 'set'
-        // (Practice Sets are their own page). Case exists only so this
-        // switch stays exhaustive over the shared PracticeScope mode union.
+        // Placeholder only — Practice Sets renders PracticeSetPicker instead
+        // of using `scope`/`pool`/the count-and-timer footer below, since a
+        // set's question list is a fixed, deterministic slice rather than a
+        // scope the student builds. Case exists so this switch stays
+        // exhaustive over the shared PracticeScope mode union.
         return { mode: 'set', setNumber: 1 };
     }
   }, [mode, topics, units]);
 
   const pool = useMemo(() => poolForScope(scope, all), [scope, all]);
+
+  const subjects = useMemo(() => Array.from(new Set((tree ?? []).map((u) => u.subject))), [tree]);
+  // Only worth showing when the bank actually mixes subjects — a
+  // single-subject bank (e.g. ITI Electronics, all "Electronics") would just
+  // force an extra click through a dropdown with exactly one option.
+  const showSubjectPicker = subjects.length > 1;
+  const unitsInSubject = useMemo(() => (tree ?? []).filter((u) => !showSubjectPicker || u.subject === subject), [tree, subject, showSubjectPicker]);
 
   // Clamp the count field down whenever the max shrinks below what's
   // currently typed — never fight the user mid-typing by clamping up.
@@ -309,6 +329,14 @@ export function QuizSetup() {
     setTopics([]);
     setUnits(next === 'unit' ? [] : units);
     setTopicUnit('');
+    setSubject('');
+  };
+
+  const changeSubject = (next: string) => {
+    setSubject(next);
+    setTopicUnit('');
+    setTopics([]);
+    setUnits([]);
   };
 
   const topicsOfSelectedUnit = tree.find((u) => u.unit === topicUnit)?.topics ?? [];
@@ -356,7 +384,21 @@ export function QuizSetup() {
         </div>
       </Card>
 
-      {mode === 'topic' && (
+      {showSubjectPicker && (mode === 'topic' || mode === 'unit' || mode === 'multi-unit' || mode === 'custom') && (
+        <Card>
+          <div className="card-title">
+            <div>
+              <h2>Subject</h2>
+              <p>This bank covers more than one subject — pick one to narrow the units below.</p>
+            </div>
+          </div>
+          <SelectDropdown label={subject} placeholder="-- Choose a subject --">
+            <SingleSelectList options={subjects.map((s) => ({ value: s, label: s }))} value={subject} onChange={changeSubject} />
+          </SelectDropdown>
+        </Card>
+      )}
+
+      {mode === 'topic' && (!showSubjectPicker || subject) && (
         <Card>
           <div className="card-title">
             <div>
@@ -367,7 +409,7 @@ export function QuizSetup() {
           <div className="setup-dropdown-row">
             <SelectDropdown label={topicUnit} placeholder="-- Choose a unit --">
               <SingleSelectList
-                options={tree.map((u) => ({ value: u.unit, label: u.unit }))}
+                options={unitsInSubject.map((u) => ({ value: u.unit, label: u.unit }))}
                 value={topicUnit}
                 onChange={(v) => {
                   setTopicUnit(v);
@@ -384,7 +426,7 @@ export function QuizSetup() {
         </Card>
       )}
 
-      {mode === 'unit' && (
+      {mode === 'unit' && (!showSubjectPicker || subject) && (
         <Card>
           <div className="card-title">
             <div>
@@ -393,12 +435,12 @@ export function QuizSetup() {
             </div>
           </div>
           <SelectDropdown label={units[0] ?? ''} placeholder="-- Choose a unit --">
-            <SingleSelectList options={tree.map((u) => ({ value: u.unit, label: `${u.unit} (${u.topics.length} topics)` }))} value={units[0] ?? ''} onChange={(v) => setUnits([v])} />
+            <SingleSelectList options={unitsInSubject.map((u) => ({ value: u.unit, label: `${u.unit} (${u.topics.length} topics)` }))} value={units[0] ?? ''} onChange={(v) => setUnits([v])} />
           </SelectDropdown>
         </Card>
       )}
 
-      {mode === 'multi-unit' && (
+      {mode === 'multi-unit' && (!showSubjectPicker || subject) && (
         <Card>
           <div className="card-title">
             <div>
@@ -407,12 +449,12 @@ export function QuizSetup() {
             </div>
           </div>
           <SelectDropdown label={units.length > 0 ? `${units.length} unit${units.length === 1 ? '' : 's'} selected` : ''} placeholder="-- Choose units --">
-            <MultiSelectList options={tree.map((u) => ({ value: u.unit, label: `${u.unit} (${u.topics.length} topics)` }))} value={units} onChange={setUnits} />
+            <MultiSelectList options={unitsInSubject.map((u) => ({ value: u.unit, label: `${u.unit} (${u.topics.length} topics)` }))} value={units} onChange={setUnits} />
           </SelectDropdown>
         </Card>
       )}
 
-      {mode === 'custom' && (
+      {mode === 'custom' && (!showSubjectPicker || subject) && (
         <Card>
           <div className="card-title">
             <div>
@@ -421,67 +463,84 @@ export function QuizSetup() {
             </div>
           </div>
           <SelectDropdown
-            label={topics.length > 0 || units.length > 0 ? `${new Set([...units, ...tree.filter((u) => topics.some((t) => u.topics.includes(t))).map((u) => u.unit)]).size} unit(s), ${topics.length} topic(s)` : ''}
+            label={
+              topics.length > 0 || units.length > 0
+                ? `${new Set([...units, ...unitsInSubject.filter((u) => topics.some((t) => u.topics.includes(t))).map((u) => u.unit)]).size} unit(s), ${topics.length} topic(s)`
+                : ''
+            }
             placeholder="-- Choose units/topics --"
           >
-            <CustomTree tree={tree} topics={topics} units={units} setTopics={setTopics} setUnits={setUnits} />
+            <CustomTree tree={unitsInSubject} topics={topics} units={units} setTopics={setTopics} setUnits={setUnits} />
           </SelectDropdown>
         </Card>
       )}
 
-      <Card>
-        <div className="card-title">
-          <div>
-            <h2>How many questions</h2>
-            <p>
-              Number of questions {pool.length > 0 && <span className="muted-hint">(max {pool.length} available)</span>}
-            </p>
+      {mode === 'set' ? (
+        <Card>
+          <div className="card-title">
+            <div>
+              <h2>Practice Sets</h2>
+            </div>
           </div>
-          <Badge tone={pool.length === 0 ? 'danger' : 'info'}>{pool.length === 0 ? 'No match' : `${effectiveCount} picked`}</Badge>
-        </div>
-        <input
-          className="form-input"
-          style={{ maxWidth: 160 }}
-          value={count}
-          onChange={(e) => setCount(e.target.value)}
-          onBlur={() => setCount((prev) => String(Math.max(1, Math.min(Number(prev) || 1, pool.length || 1))))}
-          inputMode="numeric"
-        />
-        {selectionIncomplete && <Alert tone="warning">Make a selection above to continue.</Alert>}
-        {!selectionIncomplete && pool.length === 0 && <Alert tone="danger">No questions match this selection yet.</Alert>}
-      </Card>
-
-      <Card>
-        <div className="card-title">
-          <div>
-            <h2>Timer</h2>
-            <p>Off by default — set one if you want a whole-run countdown. Running out only shows a warning, it never submits for you.</p>
-          </div>
-        </div>
-        <label className="task">
-          <input type="checkbox" checked={timerEnabled} onChange={(e) => setTimerEnabled(e.target.checked)} />
-          <span>Set a timer</span>
-        </label>
-        {timerEnabled && (
-          <div className="timer-minutes-row">
+          <PracticeSetPicker course={course} all={all} />
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <div className="card-title">
+              <div>
+                <h2>How many questions</h2>
+                <p>
+                  Number of questions {pool.length > 0 && <span className="muted-hint">(max {pool.length} available)</span>}
+                </p>
+              </div>
+              <Badge tone={pool.length === 0 ? 'danger' : 'info'}>{pool.length === 0 ? 'No match' : `${effectiveCount} picked`}</Badge>
+            </div>
             <input
               className="form-input"
-              style={{ maxWidth: 100 }}
-              value={timerMinutes}
-              onChange={(e) => setTimerMinutes(e.target.value)}
-              onBlur={() => setTimerMinutes(String(Math.max(1, Number(timerMinutes) || 1)))}
+              style={{ maxWidth: 160 }}
+              value={count}
+              onChange={(e) => setCount(e.target.value)}
+              onBlur={() => setCount((prev) => String(Math.max(1, Math.min(Number(prev) || 1, pool.length || 1))))}
               inputMode="numeric"
             />
-            <span>minutes</span>
-          </div>
-        )}
-      </Card>
+            {selectionIncomplete && <Alert tone="warning">Make a selection above to continue.</Alert>}
+            {!selectionIncomplete && pool.length === 0 && <Alert tone="danger">No questions match this selection yet.</Alert>}
+          </Card>
 
-      <div className="form-actions">
-        <Button disabled={selectionIncomplete || pool.length === 0} onClick={start}>
-          Start practice <ArrowRight size={14} />
-        </Button>
-      </div>
+          <Card>
+            <div className="card-title">
+              <div>
+                <h2>Timer</h2>
+                <p>Off by default — set one if you want a whole-run countdown. Running out only shows a warning, it never submits for you.</p>
+              </div>
+            </div>
+            <label className="task">
+              <input type="checkbox" checked={timerEnabled} onChange={(e) => setTimerEnabled(e.target.checked)} />
+              <span>Set a timer</span>
+            </label>
+            {timerEnabled && (
+              <div className="timer-minutes-row">
+                <input
+                  className="form-input"
+                  style={{ maxWidth: 100 }}
+                  value={timerMinutes}
+                  onChange={(e) => setTimerMinutes(e.target.value)}
+                  onBlur={() => setTimerMinutes(String(Math.max(1, Number(timerMinutes) || 1)))}
+                  inputMode="numeric"
+                />
+                <span>minutes</span>
+              </div>
+            )}
+          </Card>
+
+          <div className="form-actions">
+            <Button disabled={selectionIncomplete || pool.length === 0} onClick={start}>
+              Start practice <ArrowRight size={14} />
+            </Button>
+          </div>
+        </>
+      )}
     </>
   );
 }

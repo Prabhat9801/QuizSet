@@ -442,15 +442,16 @@ export const questionService = {
     if (!course) return [];
     return this.listByBank(course.questionBankId);
   },
-  /** The Unit -> Topics tree for one course's bank — what the Quiz Setup screen's mode pickers list from. */
-  async syllabusTree(courseId: string): Promise<{ unit: string; topics: string[] }[]> {
+  /** The Subject -> Unit -> Topics tree for one course's bank — what the Quiz
+   * Setup screen's mode pickers list from. */
+  async syllabusTree(courseId: string): Promise<{ subject: string; unit: string; topics: string[] }[]> {
     const qs = await this.listByCourse(courseId);
-    const byUnit = new Map<string, Set<string>>();
+    const byUnit = new Map<string, { subject: string; topics: Set<string> }>();
     for (const q of qs) {
-      if (!byUnit.has(q.unit)) byUnit.set(q.unit, new Set());
-      byUnit.get(q.unit)!.add(q.topic);
+      if (!byUnit.has(q.unit)) byUnit.set(q.unit, { subject: q.subject, topics: new Set() });
+      byUnit.get(q.unit)!.topics.add(q.topic);
     }
-    return Array.from(byUnit.entries()).map(([unit, topics]) => ({ unit, topics: Array.from(topics) }));
+    return Array.from(byUnit.entries()).map(([unit, { subject, topics }]) => ({ subject, unit, topics: Array.from(topics) }));
   },
   async create(data: Partial<Question> & { questionBankId: string; text: string; options: string[]; answer: number }): Promise<Question> {
     await wait();
@@ -462,6 +463,7 @@ export const questionService = {
       options: data.options,
       answer: data.answer,
       explanation: data.explanation || '',
+      subject: data.subject || 'General',
       unit: data.unit || 'General',
       topic: data.topic || 'General',
       difficulty: data.difficulty || 'Medium',

@@ -529,3 +529,50 @@ flat button grid is genuinely unusable (the exact complaint that triggered this 
   not also on `.select-dropdown-list`, to avoid a double scrollbar when Custom mode's tree is nested
   inside it. `.chip`/`.chip-grid` were left untouched since other pages (`Syllabus.tsx`, `Public.tsx`)
   still use them.
+
+---
+
+## 2026-08-11 (later still) — Subject dropdown, Practice Sets folded into QuizSetup, crash+unlock fixes
+
+Real bug found via actual browser use (not just review): QuizSetup crashed with React error #310
+("rendered fewer hooks than expected") — a `useEffect` for clamping the question-count field sat
+**after** the `!course || !tree` early return, so it wasn't registered on the loading render but was
+once data arrived, a genuine Rules-of-Hooks violation. Moved above the early return; documented inline
+so it isn't reintroduced by a future edit that adds another hook near that return.
+
+Separately, `paymentService.hasPurchased()` — a synchronous stub that unconditionally returns `false`
+(see its own comment in `payments.ts`) — was being used by every "is this already purchased" check
+(`StudentCourseLibrary.tsx`'s course card and detail page, `AI.tsx`'s chatbot unlock). A genuinely
+purchased course/chatbot access kept showing as locked forever, forcing repeat "purchases." Live data
+confirmed the real damage: the demo student had **7 duplicate "Success" payment rows** for the same
+course from repeatedly re-buying. Switched all three call sites to the real, server-backed
+`hasPurchasedAsync()`, then deleted the 5 stale duplicate rows in the live DB (kept the earliest
+payment per student+kind+refId — down to 2 genuine payments, one per course).
+
+**New real schema column**: `questions.subject` (text, default `'General'`) — added because the two
+seeded banks mix multiple subjects (Chemistry+Physics+Maths in the Lab Assistant Science bank) with no
+existing column to filter by subject before narrowing to a unit, which is exactly how the user described
+the original apps' own flow working (pick unit → pick topic, implicitly already subject-scoped since
+those original single-subject-per-folder banks never needed a subject filter at all — this project's
+banks are the first case that actually needs one). Backfilled all 14,703 existing question rows by
+re-reading each source file's own folder name (`Chemistry_UnitN_...` → "Chemistry", `General_<X>` →
+"X", ITI Electronics' plain `UnitN_...` folders → "Electronics") — same convention both original repos
+use. `GET /api/questions/syllabus-tree` now returns `{ subject, unit, topics }` instead of just
+`{ unit, topics }`; `services/mock.ts`'s own `syllabusTree()` mirrors the same shape (mock question rows
+default `subject` to their `unit` value, since that mock data was never multi-subject to begin with).
+
+**QuizSetup gained a Subject dropdown** — shown above the Unit picker in Topic-wise/Unit-wise/
+Multi-unit/Custom, but ONLY when a bank's `syllabusTree` actually reports more than one subject
+(`showSubjectPicker`) — the single-subject ITI Electronics bank skips it entirely rather than forcing
+an extra click through a one-option dropdown. Picking a subject filters every downstream unit list to
+just that subject; changing subject or mode resets the unit/topic selection underneath it.
+
+**Practice Sets folded into QuizSetup's mode picker as a 6th, always-last option** (Full → Topic-wise →
+Unit-wise → Multi-unit → Custom → Practice Sets), per explicit request — previously it only existed as
+a separate `/practice-sets` route reached from a button on `CourseDetail`. `PracticeSets.tsx` was
+refactored to export a shared `PracticeSetPicker` component (course + question pool in, "Set 1..N" grid
++ timer + start button out) that BOTH the standalone route and QuizSetup's new "Practice Sets" mode
+render — the standalone route is kept, not removed, so an existing bookmarked/shared link to it still
+works, but the mode card is now the primary way in. When `mode === 'set'`, QuizSetup swaps its
+count/timer/start footer for `PracticeSetPicker` entirely, since a set's questions are a fixed,
+deterministic slice rather than a scope the student builds.

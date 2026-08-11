@@ -32,8 +32,10 @@ router.get("/questions", authenticate, async (req, res) => {
   res.json(await db.select().from(questions).where(eq(questions.questionBankId, questionBankId)));
 });
 
-// GET /api/questions/syllabus-tree?courseId= — unit -> distinct topics, for
-// the practice-mode-setup screen's mode pickers.
+// GET /api/questions/syllabus-tree?courseId= — subject -> unit -> distinct
+// topics, for the practice-mode-setup screen's mode pickers. `subject` lets
+// a mixed bank (e.g. Chemistry+Physics+Maths) offer a subject filter before
+// narrowing to a unit; single-subject banks just get one subject group.
 router.get("/questions/syllabus-tree", authenticate, async (req, res) => {
   const courseId = req.query.courseId;
   if (typeof courseId !== "string") throw badRequest("courseId query parameter is required.");
@@ -45,16 +47,22 @@ router.get("/questions/syllabus-tree", authenticate, async (req, res) => {
   if (!course.questionBankId) return res.json([]);
 
   const rows = await db
-    .select({ unit: questions.unit, topic: questions.topic })
+    .select({ subject: questions.subject, unit: questions.unit, topic: questions.topic })
     .from(questions)
     .where(eq(questions.questionBankId, course.questionBankId));
 
-  const byUnit = new Map<string, Set<string>>();
+  // Keyed by unit alone (not subject+unit) since a unit belongs to exactly
+  // one subject in this data — if two different subjects' source files ever
+  // reused the same unit name, the last-seen subject would silently win,
+  // but that hasn't happened in the two real banks this seeds from.
+  const byUnit = new Map<string, { subject: string; topics: Set<string> }>();
   for (const row of rows) {
-    if (!byUnit.has(row.unit)) byUnit.set(row.unit, new Set());
-    byUnit.get(row.unit)!.add(row.topic);
+    if (!byUnit.has(row.unit)) byUnit.set(row.unit, { subject: row.subject, topics: new Set() });
+    byUnit.get(row.unit)!.topics.add(row.topic);
   }
-  return res.json(Array.from(byUnit.entries()).map(([unit, topics]) => ({ unit, topics: Array.from(topics) })));
+  return res.json(
+    Array.from(byUnit.entries()).map(([unit, { subject, topics }]) => ({ subject, unit, topics: Array.from(topics) })),
+  );
 });
 
 // POST /api/questions — platform/coaching authoring. A question bank in

@@ -16,8 +16,8 @@ export const questionService = {
     return this.listByBank(course.questionBankId);
   },
 
-  async syllabusTree(courseId: string): Promise<{ unit: string; topics: string[] }[]> {
-    return apiGet<{ unit: string; topics: string[] }[]>('/api/questions/syllabus-tree', { courseId });
+  async syllabusTree(courseId: string): Promise<{ subject: string; unit: string; topics: string[] }[]> {
+    return apiGet<{ subject: string; unit: string; topics: string[] }[]>('/api/questions/syllabus-tree', { courseId });
   },
 
   async create(
