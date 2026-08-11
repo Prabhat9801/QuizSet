@@ -548,16 +548,21 @@ button, a, input, select, textarea { outline-color: hsl(var(--ring)); }
 /* Custom-mode unit/topic tree (QuizSetup.tsx CustomTree) + timer minute input
    row + fixed-set tiles (PracticeSets.tsx) — share the setup screens above. */
 .custom-tree{display:grid}.tree-actions{display:flex;gap:8px;margin-bottom:14px}
-.tree-unit{border-top:1px solid hsl(var(--border));padding:10px 0}.tree-unit:first-child{border-top:0}
-.tree-unit-head{display:flex;align-items:center;gap:9px}
-.tree-chevron{display:inline-grid;place-items:center;border:0;background:transparent;color:hsl(var(--muted-foreground));cursor:pointer;padding:2px}
-.tree-checkbox{width:16px;height:16px;border:1px solid hsl(var(--border));border-radius:4px;background:transparent;display:grid;place-items:center;font-size:10px;line-height:1;cursor:pointer;color:transparent}
+/* Unified with .select-dropdown-option (Topic/Unit/Multi-unit's rows) so
+   Custom mode's tree reads as the same control, not a visually different
+   one — same padding/radius/hover, just with a chevron + tri-state checkbox
+   in place of that row's plain radio/checkbox. */
+.tree-unit{display:grid}
+.tree-unit-head{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;cursor:pointer}
+.tree-unit-head:hover{background:hsl(var(--muted))}
+.tree-chevron{display:inline-grid;place-items:center;border:0;background:transparent;color:hsl(var(--muted-foreground));cursor:pointer;padding:2px;flex:none}
+.tree-checkbox{width:16px;height:16px;border:1px solid hsl(var(--border));border-radius:4px;background:transparent;display:grid;place-items:center;font-size:10px;line-height:1;cursor:pointer;color:transparent;flex:none}
 .tree-checkbox.checked{background:hsl(var(--primary));border-color:hsl(var(--primary));color:white}
 .tree-checkbox.partial{background:hsl(var(--card));border-color:hsl(var(--primary));color:hsl(var(--primary))}
-.tree-unit-name{font-size:12.5px;font-weight:600;cursor:pointer}
+.tree-unit-name{font-size:12.5px;cursor:pointer;color:hsl(var(--foreground))}
 .tree-unit-count{margin-left:auto;color:hsl(var(--muted-foreground));font-size:11px;font-variant-numeric:tabular-nums}
-.tree-topics{display:grid;gap:7px;padding-left:26px;margin-top:8px}
-.tree-topic{display:flex;align-items:center;gap:9px;font-size:12px;color:hsl(var(--muted-foreground));cursor:pointer}.tree-topic input{accent-color:hsl(var(--primary));width:16px;height:16px}
+.tree-topics{display:grid;gap:2px;padding-left:26px;margin-top:2px}
+.tree-topic{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:7px;font-size:12.5px;color:hsl(var(--foreground));cursor:pointer}.tree-topic:hover{background:hsl(var(--muted))}.tree-topic input{accent-color:hsl(var(--primary));width:16px;height:16px;flex:none}
 
 /* Dropdown-driven pickers (QuizSetup.tsx SelectDropdown) — replace flat chip
    grids for Unit/Topic/Multi-unit/Custom so 48+ units and hundreds of topics
