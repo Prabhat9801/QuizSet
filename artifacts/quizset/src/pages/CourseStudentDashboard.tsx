@@ -97,10 +97,10 @@ export function CourseStudentDashboard() {
       <PageHeader
         eyebrow={course.name}
         title="Student performance"
-        description="Every attempt on this course, plus where the class is strong or weak by topic."
+        description="Every attempt on this practice set, plus where the class is strong or weak by topic."
         action={
           <Link href={`/coaching/courses/${course.id}`} className="btn btn-ghost">
-            <ArrowLeft size={14} /> Back to course
+            <ArrowLeft size={14} /> Back to practice set
           </Link>
         }
       />
@@ -116,7 +116,7 @@ export function CourseStudentDashboard() {
         <div className="card-title">
           <div>
             <h2>Topic & unit accuracy</h2>
-            <p>Across every student's attempts on this course.</p>
+            <p>Across every student's attempts on this practice set.</p>
           </div>
         </div>
         {topicRows.length === 0 ? (
@@ -181,7 +181,7 @@ export function CourseStudentDashboard() {
           </div>
         </div>
         {rows.length === 0 ? (
-          <EmptyState title="No attempts yet" description="Nobody eligible for this course has attempted it yet." />
+          <EmptyState title="No attempts yet" description="Nobody eligible for this practice set has attempted it yet." />
         ) : (
           <>
             <div className="filter-bar" style={{ padding: '0 0 14px' }}>

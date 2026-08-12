@@ -37,7 +37,7 @@ export function StudentsPage() {
   const decide = async (r: JoinRequest, approve: boolean) => {
     await joinRequestService.decide(r.id, approve);
     await load();
-    toast(approve ? 'Student approved' : 'Request rejected', approve ? `${r.studentName} can now access your courses.` : `${r.studentName}'s request was declined.`);
+    toast(approve ? 'Student approved' : 'Request rejected', approve ? `${r.studentName} can now access your practice sets.` : `${r.studentName}'s request was declined.`);
   };
 
   const approveTestimonial = async (t: Testimonial) => {
@@ -118,7 +118,7 @@ export function StudentsPage() {
                     <th>Student</th>
                     <th>Email</th>
                     <th>Joined</th>
-                    <th>Courses</th>
+                    <th>Practice Sets</th>
                     <th>Performance</th>
                     <th>Status</th>
                     <th>Actions</th>

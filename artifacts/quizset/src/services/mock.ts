@@ -685,7 +685,7 @@ export const certificateService = {
       studentId: data.studentId,
       studentName: student?.name || 'Student',
       courseId: data.courseId,
-      courseName: course?.name || 'Course',
+      courseName: course?.name || 'Practice Set',
       tenantId: data.tenantId,
       certificateCode: `QS-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
       coachingNameSnapshot: tenant?.name || 'QuizSet Coaching',

@@ -32,6 +32,7 @@ import { Branding } from '@/pages/Branding';
 import { JoinFlow } from '@/pages/JoinFlow';
 import { GenericPage } from '@/pages/GenericPage';
 import { Profile } from '@/pages/Profile';
+import { CoachingProfile } from '@/pages/CoachingProfile';
 import { StudentCertificates, CertificateView } from '@/pages/Certificates';
 import { PlatformTestimonials } from '@/pages/Testimonials';
 import { Syllabus } from '@/pages/Syllabus';
@@ -96,7 +97,7 @@ function Router() {
         <Route path="/coaching/ai">{() => <AppRoute component={ChatbotSettings} roles={['coaching']} />}</Route>
         <Route path="/coaching/notifications">{() => <AppRoute component={NotificationsPage} roles={['coaching']} />}</Route>
         <Route path="/coaching/branding">{() => <AppRoute component={Branding} roles={['coaching']} />}</Route>
-        <Route path="/coaching/settings">{() => <AppRoute component={() => <GenericPage title="Coaching settings" />} roles={['coaching']} />}</Route>
+        <Route path="/coaching/settings">{() => <AppRoute component={CoachingProfile} roles={['coaching']} />}</Route>
 
         {/* --------------------------------------------------------------- student */}
         <Route path="/student/join">{() => <AppRoute component={JoinFlow} roles={['student']} />}</Route>

@@ -14,7 +14,7 @@ const platformNav = [
   ['/platform/coachings', 'Coachings', Building2],
   ['/platform/question-requests', 'Question Requests', BookOpen],
   ['/platform/question-banks', 'Question Banks', BookOpen],
-  ['/platform/courses', 'Courses', GraduationCap],
+  ['/platform/courses', 'Practice Sets', GraduationCap],
   ['/platform/payments', 'Payments', CreditCard],
   ['/platform/testimonials', 'Testimonials', MessageSquareQuote],
   ['/platform/notifications', 'Notifications', Bell],
@@ -23,7 +23,7 @@ const platformNav = [
 
 const coachingNav = [
   ['/coaching/dashboard', 'Dashboard', Gauge],
-  ['/coaching/courses', 'Courses', GraduationCap],
+  ['/coaching/courses', 'Practice Sets', GraduationCap],
   ['/coaching/live-tests', 'Live Tests', Play],
   ['/coaching/students', 'Students', Users],
   ['/coaching/question-banks', 'Question Banks', BookOpen],
@@ -36,7 +36,7 @@ const coachingNav = [
 
 const studentNav = [
   ['/student/dashboard', 'Overview', Gauge],
-  ['/student/courses', 'Course library', BookOpen],
+  ['/student/courses', 'Practice Set Library', BookOpen],
   ['/student/live-tests', 'Live Tests', Play],
   ['/student/results', 'Results', GraduationCap],
   ['/student/ai', 'Study companion', Sparkles],

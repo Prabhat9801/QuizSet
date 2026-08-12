@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   ArrowRight,
   BarChart3,
+  Bell,
   BookOpen,
   Check,
   ChevronDown,
@@ -53,27 +54,27 @@ const FAQS = [
   },
   {
     q: 'Do we need a technical team to run this?',
-    a: 'No. Courses, pricing, students and live tests are all managed from your own dashboard — no code to write and no server to maintain.',
+    a: 'No. Practice Sets, pricing, students and live tests are all managed from your own dashboard — no code to write and no server to maintain.',
   },
   {
     q: 'Who writes the questions, and can we review them?',
     a: 'You share your syllabus and requirements, and our team builds the question bank. We review it ourselves first, then hand it to you for your own review and edits — nothing goes live until you finalize it.',
   },
   {
-    q: 'What practice modes does a course include?',
-    a: 'Every course ships with five modes — Full, Topic-wise, Unit-wise, Multi-unit and Custom — all untimed, at the student’s own pace, with instant right/wrong feedback and explanations.',
+    q: 'What practice modes does a practice set include?',
+    a: 'Every practice set ships with five modes — Full, Topic-wise, Unit-wise, Multi-unit and Custom — all untimed, at the student’s own pace, with instant right/wrong feedback and explanations.',
   },
   {
     q: 'Are Live Tests the same as regular practice?',
-    a: 'No. Live Tests are separate, scheduled, timed sittings with a question palette, mark-for-review and auto-submit. Regular course practice stays untimed — timing only exists inside a Live Test.',
+    a: 'No. Live Tests are separate, scheduled, timed sittings with a question palette, mark-for-review and auto-submit. Regular practice set sessions stay untimed — timing only exists inside a Live Test.',
   },
   {
-    q: 'How do students pay for a course?',
-    a: 'You set the price per course, with an optional strikethrough MRP and a free-preview question count. Students unlock full access after paying, inside their own branded workspace.',
+    q: 'How do students pay for a practice set?',
+    a: 'You set the price per practice set, with an optional strikethrough MRP and a free-preview question count. Students unlock full access after paying, inside their own branded workspace.',
   },
   {
     q: 'Can we see how our students are performing?',
-    a: 'Yes — your dashboard shows course-level attempt and accuracy stats, a topic/unit breakdown of where your class is weak, and lets you drill into any individual student’s attempt.',
+    a: 'Yes — your dashboard shows practice-set-level attempt and accuracy stats, a topic/unit breakdown of where your class is weak, and lets you drill into any individual student’s attempt.',
   },
 ];
 
@@ -88,6 +89,7 @@ export function Landing() {
           <a href="#platform">Platform</a>
           <a href="#workflow">How it works</a>
           <a href="#students">For Students</a>
+          <a href="#manage">Manage</a>
           <a href="#pricing">Pricing</a>
           <a href="#faq">FAQ</a>
         </nav>
@@ -108,7 +110,7 @@ export function Landing() {
           <h1>
             Your coaching deserves a <em>platform</em> of its own.
           </h1>
-          <p>Launch a branded course and practice experience that feels unmistakably yours — from the first question to the final result.</p>
+          <p>Launch a branded practice set and practice experience that feels unmistakably yours — from the first question to the final result.</p>
           <div className="hero-actions">
             <Link href="/login" className="btn btn-primary">
               Explore QuizSet <ArrowRight size={16} />
@@ -149,7 +151,7 @@ export function Landing() {
                 <div className="mini-logo">SA</div>
                 <b>Sunrise Academy</b>
                 <small>Owner workspace</small>
-                {['Overview', 'Courses', 'Students', 'Live Tests'].map((x, i) => (
+                {['Overview', 'Practice Sets', 'Students', 'Live Tests'].map((x, i) => (
                   <div className={i === 0 ? 'mini-nav active' : 'mini-nav'} key={x}>
                     <span className="mini-icon">{['◈', '◫', '♙', '↗'][i]}</span>
                     {x}
@@ -177,7 +179,7 @@ export function Landing() {
                     <i>+3 this week</i>
                   </div>
                   <div>
-                    <small>Courses</small>
+                    <small>Practice Sets</small>
                     <strong>3</strong>
                     <i>1 in review</i>
                   </div>
@@ -226,19 +228,19 @@ export function Landing() {
         <div className="section-intro">
           <div className="eyebrow">FROM SYLLABUS TO STUDENTS</div>
           <h2>
-            How your course<br />
+            How your practice set<br />
             <em>actually gets built.</em>
           </h2>
           <p>One connected pipeline — from what you send us to what your students see.</p>
         </div>
         <div>
           <div className="steps">
-            <Step n="01" title="You share your syllabus" copy="Send your syllabus, exam pattern and any specific instructions for the course." />
+            <Step n="01" title="You share your syllabus" copy="Send your syllabus, exam pattern and any specific instructions for the practice set." />
             <Step n="02" title="We build your question bank" copy="Our team drafts the full question bank against your syllabus, unit by unit." />
             <Step n="03" title="Our own review pass" copy="Every question is checked internally for accuracy before you ever see it." />
             <Step n="04" title="You review and edit" copy="Your team reads through the bank inside your own dashboard — edit it, fix it, or ask for changes." />
             <Step n="05" title="You finalize" copy="Nothing goes live until you approve it. Finalizing the bank is your explicit call." />
-            <Step n="06" title="It goes live, under your brand" copy="Students see the finished course inside your coaching's own branded workspace." />
+            <Step n="06" title="It goes live, under your brand" copy="Students see the finished practice set inside your coaching's own branded workspace." />
           </div>
           <div className="recap-grid">
             <div className="recap-card">
@@ -247,7 +249,7 @@ export function Landing() {
             </div>
             <div className="recap-card">
               <b>We build</b>
-              <span>Question bank, full course, practice system</span>
+              <span>Question bank, full practice set, practice system</span>
             </div>
             <div className="recap-card">
               <b>You control</b>
@@ -363,23 +365,23 @@ export function Landing() {
         </Card>
       </section>
 
-      {/* ------------------------------------------ Course + practice modes */}
+      {/* ------------------------------------------ Practice Set + practice modes */}
       <section className="landing-section" id="pricing">
         <div className="section-intro">
-          <div className="eyebrow">ONE COURSE, EVERYTHING INCLUDED</div>
+          <div className="eyebrow">ONE PRACTICE SET, EVERYTHING INCLUDED</div>
           <h2>
             Price it your way.<br />
             <em>Practice comes built in.</em>
           </h2>
-          <p>Every course you publish carries its own price and its own complete practice system — automatically, every time.</p>
+          <p>Every practice set you publish carries its own price and its own complete practice system — automatically, every time.</p>
         </div>
         <Price
           name="SSC CGL 2026 — Tier I"
           price={formatRupees(499)}
           period="one-time access"
-          copy="An example of how one coaching priced their flagship course."
+          copy="An example of how one coaching priced their flagship practice set."
           points={[`MRP ${formatRupees(999)} — 50% off`, 'Free preview: 5 questions before buying', 'Every unit and topic included']}
-          cta="See a course like this"
+          cta="See a practice set like this"
           extra={
             <div className="mode-grid" style={{ marginTop: 6, marginBottom: 18 }}>
               {MODE_TILES.map(({ icon: Icon, label, hint }, i) => (
@@ -439,7 +441,7 @@ export function Landing() {
             Live Tests,<br />
             <em>scheduled and timed.</em>
           </h2>
-          <p>Separate from regular course practice — a Live Test opens at a set time, runs on a clock, and locks the moment time is up.</p>
+          <p>Separate from regular practice set sessions — a Live Test opens at a set time, runs on a clock, and locks the moment time is up.</p>
           <Feature icon={<Clock3 />} num="01" title="Scheduled, not always-on" copy="A Live Test has its own opening and closing window — students can only attempt it while it's live." />
           <Feature icon={<Flag />} num="02" title="Mark for review, then submit" copy="A question palette shows what's answered, marked or skipped — with auto-submit the instant time runs out." />
         </div>
@@ -485,7 +487,7 @@ export function Landing() {
             See exactly<br />
             <em>where your class stands.</em>
           </h2>
-          <p>Course-level stats, a topic-by-topic breakdown of where the class is weak, and any student's own attempt — all in one dashboard.</p>
+          <p>Practice-set-level stats, a topic-by-topic breakdown of where the class is weak, and any student's own attempt — all in one dashboard.</p>
         </div>
         <div>
           <div className="stats-grid">
@@ -569,6 +571,48 @@ export function Landing() {
         </div>
       </section>
 
+      {/* --------------------------------------------------------- Manage -- */}
+      <section className="landing-section" id="manage">
+        <div className="section-intro">
+          <div className="eyebrow">RUN YOUR BUSINESS, NOT JUST YOUR CONTENT</div>
+          <h2>
+            Know what's happening
+            <br />
+            <em>the moment it happens.</em>
+          </h2>
+          <p>Payments, new students, live test results, and who needs a nudge — surfaced automatically, not something you have to go looking for.</p>
+          <Feature icon={<Bell />} num="01" title="Alerts that matter, not noise" copy="A payment lands, a student joins, a live test ends — you find out the moment it happens, not when you happen to check." />
+          <Feature icon={<CreditCard />} num="02" title="See where the money and the learning are going" copy="Revenue per practice set, totals across your whole coaching, and which students need attention before a weak topic becomes a pattern." />
+        </div>
+        <div>
+          <Card>
+            <div className="card-title">
+              <div>
+                <h2>Notifications</h2>
+                <p>A calm record of what needs your attention.</p>
+              </div>
+            </div>
+            <div className="landing-notification-list">
+              {[
+                { icon: <CreditCard size={14} />, title: 'Payment received', body: 'Priya Sharma paid ₹499 for SSC CGL Practice Set', time: '2m ago' },
+                { icon: <Users size={14} />, title: 'New student joined', body: 'Aman Gupta joined via join code', time: '38m ago' },
+                { icon: <Flag size={14} />, title: 'Live Test ended', body: 'Weekly Mock Test #4 results are ready', time: '1h ago' },
+                { icon: <BarChart3 size={14} />, title: 'Needs attention', body: "Aarav hasn't practiced in 3 days", time: '3h ago' },
+              ].map((n) => (
+                <div className="landing-notification-row" key={n.title + n.time}>
+                  <span className="landing-notification-dot">{n.icon}</span>
+                  <div>
+                    <b>{n.title}</b>
+                    <p>{n.body}</p>
+                    <small>{n.time}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </section>
+
       {/* ------------------------------------------------------- Payments -- */}
       <section className="landing-section">
         <div className="section-intro">
@@ -577,7 +621,7 @@ export function Landing() {
             Get paid for<br />
             <em>what you sell.</em>
           </h2>
-          <p>Courses, Live Tests and the AI assistant each collect payment on their own — you set every price.</p>
+          <p>Practice Sets, Live Tests and the AI assistant each collect payment on their own — you set every price.</p>
           <span className="mock-tag">Example figures · illustrative</span>
         </div>
         <Card>
@@ -597,7 +641,7 @@ export function Landing() {
               </thead>
               <tbody>
                 <tr>
-                  <td>Course access · SSC CGL 2026</td>
+                  <td>Practice Set access · SSC CGL 2026</td>
                   <td>{formatRupees(499)}</td>
                   <td>
                     <Badge tone="success">Success</Badge>
@@ -714,7 +758,7 @@ export function Landing() {
       {/* ------------------------------------------- Final CTA + footer -- */}
       <section className="final-cta">
         <h2>Ready to launch your own platform?</h2>
-        <p>Send us your syllabus and see what your branded course looks like — no commitment to start.</p>
+        <p>Send us your syllabus and see what your branded practice set looks like — no commitment to start.</p>
         <div className="hero-actions">
           <Link href="/login" className="btn btn-primary">
             Explore QuizSet <ArrowRight size={16} />
@@ -726,7 +770,7 @@ export function Landing() {
       </section>
       <footer>
         <Logo />
-        <span>Your Coaching. Your Brand. Your Course Platform.</span>
+        <span>Your Coaching. Your Brand. Your Practice Set Platform.</span>
         <small>© 2025 QuizSet. Built for ambitious coaching institutes.</small>
       </footer>
     </div>
@@ -804,7 +848,7 @@ export function Login(){const [email,setEmail]=useState('');const [password,setP
   // A real sign-in that succeeds still has no way to resolve a role/tenant
   // until AppContext's session bootstrap fetches the matching profile (see
   // AppContext.tsx), so this just routes home and lets that effect take over.
-  const submit=async(e=email,p=password)=>{setError('');try{const {authService}=await import('@/services/mock');const u=await authService.login(e,p);login(u);toast('Welcome back',`Signed in as ${u.name}.`);setLoc(u.role==='platform'?'/platform/dashboard':u.role==='coaching'?'/coaching/dashboard':u.tenantId?'/student/dashboard':'/student/join');return}catch(mockErr){const {isSupabaseConfigured,signInWithPassword}=await import('@/services/supabase');if(!isSupabaseConfigured){setError((mockErr as Error).message);return}try{await signInWithPassword(e,p);toast('Welcome back','Signed in.');setLoc('/student/dashboard')}catch(realErr){setError((realErr as Error).message)}}};return <div className="login-page"><div className="login-visual"><Link href="/" className="login-brand"><span className="brand-mark">Q</span>QuizSet</Link><div className="login-copy"><div className="eyebrow" style={{color:'#82ecf7'}}>THE COACHING OPERATING SYSTEM</div><h1>Your Coaching.<br/>Your Brand.<br/><em>Your Course Platform.</em></h1><p>A calm, capable workspace for institutes that want to teach better, operate smarter and build something that lasts.</p><div className="login-points"><span>White-label by design</span><span>Built for Indian coaching</span><span>Signal-rich insights</span></div></div><small style={{color:'#8da4d5',fontSize:11}}>A focused demo workspace by QuizSet</small></div><div className="login-form-side"><div className="login-card"><div className="eyebrow">DEMO ACCESS</div><h2>Welcome back.</h2><p>Choose an account, or sign in with your demo credentials — or your real account, if this coaching has one.</p><form className="login-form" onSubmit={e=>{e.preventDefault();submit()}}><label className="field"><span>Email</span><input data-testid="input-email" value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="you@institute.in" autoComplete="email"/></label><label className="field"><span>Password</span><div className="password-field"><input data-testid="input-password" value={password} onChange={e=>setPassword(e.target.value)} type={showPassword?'text':'password'} placeholder="Enter password" autoComplete="current-password"/><button type="button" className="password-toggle" onClick={()=>setShowPassword(s=>!s)} aria-label={showPassword?'Hide password':'Show password'}>{showPassword?<EyeOff size={16}/>:<Eye size={16}/>}</button></div></label><div className="remember"><label><input type="checkbox" defaultChecked/> Remember me</label><button type="button" className="forgot" onClick={()=>setForgot(true)}>Forgot password?</button></div>{error&&<div className="login-error">{error}</div>}<Button data-testid="button-login" className="login-submit" type="submit">Sign in to workspace <ArrowRight size={15}/></Button></form><p className="signup-hint">New student? <Link href="/signup">Create an account</Link> and join a coaching with a code.</p><div className="demo-box"><p>One-click demo accounts</p><div className="demo-buttons"><button data-testid="button-demo-platform" onClick={()=>quick('admin@quizset.demo','admin123')}><strong>Platform Owner</strong><span>Command center · admin@quizset.demo</span></button><button data-testid="button-demo-coaching" onClick={()=>quick('owner@sunrise.demo','owner123')}><strong>Coaching Owner</strong><span>Sunrise Academy · owner@sunrise.demo</span></button><button data-testid="button-demo-student" onClick={()=>quick('rahul@student.demo','student123')}><strong>Student</strong><span>Rahul Sharma · learner workspace</span></button></div></div></div></div>{forgot&&<ForgotPasswordModal initialEmail={email} onClose={()=>setForgot(false)} onDone={()=>{setForgot(false);toast('Password updated','Sign in with your new password.','success')}}/>}</div>}
+  const submit=async(e=email,p=password)=>{setError('');try{const {authService}=await import('@/services/mock');const u=await authService.login(e,p);login(u);toast('Welcome back',`Signed in as ${u.name}.`);setLoc(u.role==='platform'?'/platform/dashboard':u.role==='coaching'?'/coaching/dashboard':u.tenantId?'/student/dashboard':'/student/join');return}catch(mockErr){const {isSupabaseConfigured,signInWithPassword}=await import('@/services/supabase');if(!isSupabaseConfigured){setError((mockErr as Error).message);return}try{await signInWithPassword(e,p);toast('Welcome back','Signed in.');setLoc('/student/dashboard')}catch(realErr){setError((realErr as Error).message)}}};return <div className="login-page"><div className="login-visual"><Link href="/" className="login-brand"><span className="brand-mark">Q</span>QuizSet</Link><div className="login-copy"><div className="eyebrow" style={{color:'#82ecf7'}}>THE COACHING OPERATING SYSTEM</div><h1>Your Coaching.<br/>Your Brand.<br/><em>Your Practice Set Platform.</em></h1><p>A calm, capable workspace for institutes that want to teach better, operate smarter and build something that lasts.</p><div className="login-points"><span>White-label by design</span><span>Built for Indian coaching</span><span>Signal-rich insights</span></div></div><small style={{color:'#8da4d5',fontSize:11}}>A focused demo workspace by QuizSet</small></div><div className="login-form-side"><div className="login-card"><div className="eyebrow">DEMO ACCESS</div><h2>Welcome back.</h2><p>Choose an account, or sign in with your demo credentials — or your real account, if this coaching has one.</p><form className="login-form" onSubmit={e=>{e.preventDefault();submit()}}><label className="field"><span>Email</span><input data-testid="input-email" value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="you@institute.in" autoComplete="email"/></label><label className="field"><span>Password</span><div className="password-field"><input data-testid="input-password" value={password} onChange={e=>setPassword(e.target.value)} type={showPassword?'text':'password'} placeholder="Enter password" autoComplete="current-password"/><button type="button" className="password-toggle" onClick={()=>setShowPassword(s=>!s)} aria-label={showPassword?'Hide password':'Show password'}>{showPassword?<EyeOff size={16}/>:<Eye size={16}/>}</button></div></label><div className="remember"><label><input type="checkbox" defaultChecked/> Remember me</label><button type="button" className="forgot" onClick={()=>setForgot(true)}>Forgot password?</button></div>{error&&<div className="login-error">{error}</div>}<Button data-testid="button-login" className="login-submit" type="submit">Sign in to workspace <ArrowRight size={15}/></Button></form><p className="signup-hint">New student? <Link href="/signup">Create an account</Link> and join a coaching with a code.</p><div className="demo-box"><p>One-click demo accounts</p><div className="demo-buttons"><button data-testid="button-demo-platform" onClick={()=>quick('admin@quizset.demo','admin123')}><strong>Platform Owner</strong><span>Command center · admin@quizset.demo</span></button><button data-testid="button-demo-coaching" onClick={()=>quick('owner@sunrise.demo','owner123')}><strong>Coaching Owner</strong><span>Sunrise Academy · owner@sunrise.demo</span></button><button data-testid="button-demo-student" onClick={()=>quick('rahul@student.demo','student123')}><strong>Student</strong><span>Rahul Sharma · learner workspace</span></button></div></div></div></div>{forgot&&<ForgotPasswordModal initialEmail={email} onClose={()=>setForgot(false)} onDone={()=>{setForgot(false);toast('Password updated','Sign in with your new password.','success')}}/>}</div>}
 
 /**
  * Real 3-step password reset, via Supabase Auth's own recovery-OTP flow

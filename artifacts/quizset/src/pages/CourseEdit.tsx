@@ -87,7 +87,7 @@ export function CourseEdit() {
         status: form.status,
         assignedStudentIds: restrictToSpecific ? assignedIds : [],
       });
-      toast('Course saved', `${form.name} has been updated.`);
+      toast('Practice set saved', `${form.name} has been updated.`);
     } catch (err) {
       toast('Could not save', (err as Error).message, 'danger');
     }
@@ -131,17 +131,17 @@ export function CourseEdit() {
   return (
     <>
       <PageHeader
-        eyebrow="Course settings"
+        eyebrow="Practice set settings"
         title={course.name}
         description="Update pricing, who can see it, and publish status."
         action={
           <Link href="/coaching/courses" className="btn btn-ghost">
-            <ArrowLeft size={14} /> Back to courses
+            <ArrowLeft size={14} /> Back to practice sets
           </Link>
         }
       />
       <Card>
-        <Field label="Course name" required>
+        <Field label="Practice set name" required>
           <input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         </Field>
         <Field label="Description">
@@ -180,8 +180,8 @@ export function CourseEdit() {
       <Card>
         <div className="card-title">
           <div>
-            <h2>Who can see this course</h2>
-            <p>Default is every student in your coaching — restrict it if this course is only for specific, approved students.</p>
+            <h2>Who can see this practice set</h2>
+            <p>Default is every student in your coaching — restrict it if this practice set is only for specific, approved students.</p>
           </div>
         </div>
         <Checkbox label="Restrict to specific students" checked={restrictToSpecific} onChange={(e) => setRestrictToSpecific(e.target.checked)} />
@@ -235,7 +235,7 @@ export function CourseEdit() {
         {units === null ? (
           <Skeleton className="skeleton-row" />
         ) : units.length === 0 ? (
-          <Alert tone="warning">This course has no units yet — add questions to its bank before setting a study plan.</Alert>
+          <Alert tone="warning">This practice set has no units yet — add questions to its bank before setting a study plan.</Alert>
         ) : (
           <>
             <div className="mode-grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>

@@ -38,12 +38,12 @@ export function CoursesPage({ scope = 'coaching' }: { scope?: 'coaching' | 'plat
     <>
       <PageHeader
         eyebrow={scope === 'platform' ? 'Platform catalog' : tenant.name}
-        title="Courses"
-        description={scope === 'platform' ? 'Every course across the QuizSet network.' : 'Configure, publish and learn from your courses.'}
+        title="Practice Sets"
+        description={scope === 'platform' ? 'Every practice set across the QuizSet network.' : 'Configure, publish and learn from your practice sets.'}
         action={
           scope === 'coaching' ? (
             <Link href="/coaching/courses/create" className="btn btn-primary">
-              <Plus size={15} /> Create course
+              <Plus size={15} /> Create practice set
             </Link>
           ) : undefined
         }
@@ -51,7 +51,7 @@ export function CoursesPage({ scope = 'coaching' }: { scope?: 'coaching' | 'plat
       <Tabs tabs={TABS} value={tab} onChange={setTab} />
       {filtered.length === 0 ? (
         <Card>
-          <EmptyState title="No courses in this view" description="Create or publish a course to make this list useful." action={scope === 'coaching' ? <Link href="/coaching/courses/create" className="btn btn-primary">Create course</Link> : undefined} />
+          <EmptyState title="No practice sets in this view" description="Create or publish a practice set to make this list useful." action={scope === 'coaching' ? <Link href="/coaching/courses/create" className="btn btn-primary">Create practice set</Link> : undefined} />
         </Card>
       ) : (
         <div className="exam-grid">

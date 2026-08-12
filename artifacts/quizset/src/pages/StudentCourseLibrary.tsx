@@ -20,7 +20,7 @@ export function StudentCourses() {
 
   return (
     <>
-      <PageHeader eyebrow={tenant.name} title="Course library" description="A focused set of courses for your next step." />
+      <PageHeader eyebrow={tenant.name} title="Practice Set Library" description="A focused set of practice sets for your next step." />
       <div className="exam-grid">
         {items.map((c) => (
           <StudentMarketCard course={c} key={c.id} />
@@ -66,7 +66,7 @@ function StudentMarketCard({ course }: { course: CourseWithCount }) {
       </div>
       <div className="market-actions">
         <Link href={`/student/courses/${course.id}`} className="btn btn-ghost" style={{ width: '100%' }}>
-          View course <ArrowRight size={14} />
+          View practice set <ArrowRight size={14} />
         </Link>
       </div>
     </Card>
@@ -116,7 +116,7 @@ export function CourseDetail() {
   return (
     <>
       <PageHeader
-        eyebrow="Course details"
+        eyebrow="Practice set details"
         title={course.name}
         description={course.description || 'A clear preview before you commit your focus.'}
         action={
@@ -180,16 +180,16 @@ export function CourseDetail() {
           </div>
           <div className="ai-box">
             <Sparkles size={17} />
-            <p>{course.preview > 0 && !purchased ? 'Start with the free preview. It covers the question style and difficulty you’ll see in the full course.' : 'Choose a practice mode, answer at a comfortable pace, and review the explanation after every question you get wrong.'}</p>
+            <p>{course.preview > 0 && !purchased ? 'Start with the free preview. It covers the question style and difficulty you’ll see in the full practice set.' : 'Choose a practice mode, answer at a comfortable pace, and review the explanation after every question you get wrong.'}</p>
           </div>
         </Card>
       </div>
       {pay && (
-        <Modal title={done ? 'Payment complete' : 'Unlock your course'} onClose={() => !processing && setPay(false)}>
+        <Modal title={done ? 'Payment complete' : 'Unlock your practice set'} onClose={() => !processing && setPay(false)}>
           {done ? (
             <div className="success-panel">
               <CheckCircle2 size={30} />
-              <h3>Your course is unlocked.</h3>
+              <h3>Your practice set is unlocked.</h3>
               <p>Payment simulated successfully.</p>
               <Link href={`/student/courses/${course.id}/setup`} className="btn btn-primary">
                 Start practice
@@ -270,10 +270,10 @@ export function Preview() {
           <Sparkles size={16} />
           <span>
             <b>You're exploring the first {questions.length} questions for free.</b>
-            <small>Unlock the full course whenever you're ready.</small>
+            <small>Unlock the full practice set whenever you're ready.</small>
           </span>
           <Link href={`/student/courses/${course.id}`} className="btn btn-secondary">
-            View full course
+            View full practice set
           </Link>
         </div>
         <Card className="preview-question">

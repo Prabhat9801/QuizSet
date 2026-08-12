@@ -48,7 +48,7 @@ async function resolveCourseName(courseId: string): Promise<string> {
     const course = await apiGet<{ name: string }>(`/api/courses/${courseId}`);
     return course.name;
   } catch {
-    return 'Course';
+    return 'Practice Set';
   }
 }
 

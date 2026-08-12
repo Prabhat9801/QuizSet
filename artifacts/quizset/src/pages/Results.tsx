@@ -11,7 +11,7 @@ import { setPendingPractice } from '@/lib/practiceHandoff';
 /** The 7 user-facing labels a student's attempt can be categorised under —
  * used for both the ResultsHistory mode filter and the per-row badge, so the
  * two always agree on what an attempt "is". */
-const MODE_LABELS = ['Topic-wise', 'Unit-wise', 'Multi-unit', 'Custom', 'Full course', 'Practice Sets', 'Live Test'] as const;
+const MODE_LABELS = ['Topic-wise', 'Unit-wise', 'Multi-unit', 'Custom', 'Full practice set', 'Practice Sets', 'Live Test'] as const;
 type ModeLabel = (typeof MODE_LABELS)[number];
 
 function modeLabel(a: Attempt): ModeLabel {
@@ -29,7 +29,7 @@ function modeLabel(a: Attempt): ModeLabel {
       return 'Practice Sets';
     case 'full':
     default:
-      return 'Full course';
+      return 'Full practice set';
   }
 }
 
@@ -44,7 +44,7 @@ export function ResultsHistory() {
     if (!user) return;
     attemptService.listForStudent(user.id).then(async (attempts) => {
       const withNames = await Promise.all(
-        attempts.map(async (a) => ({ ...a, courseName: (await courseService.get(a.courseId))?.name || 'Course' }))
+        attempts.map(async (a) => ({ ...a, courseName: (await courseService.get(a.courseId))?.name || 'Practice Set' }))
       );
       setRows(withNames);
     });
@@ -81,7 +81,7 @@ export function ResultsHistory() {
         <>
           <div className="filter-bar">
             <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)} data-testid="select-filter-course">
-              <option value="All">All courses</option>
+              <option value="All">All practice sets</option>
               {courseOptions.map(([id, name]) => (
                 <option key={id} value={id}>
                   {name}
@@ -103,7 +103,7 @@ export function ResultsHistory() {
 
           {filteredRows.length === 0 ? (
             <Card>
-              <EmptyState title="No attempts match" description="Try a different course or mode." />
+              <EmptyState title="No attempts match" description="Try a different practice set or mode." />
             </Card>
           ) : (
             <div className="result-list">
@@ -187,7 +187,7 @@ function OverallWeakTopics({ attempts }: { attempts: Attempt[] }) {
             <Target size={15} style={{ verticalAlign: '-3px', marginRight: 6 }} />
             Recommended focus areas
           </h2>
-          <p>Across every course you've attempted — your weakest topics, worth practising next.</p>
+          <p>Across every practice set you've attempted — your weakest topics, worth practising next.</p>
         </div>
       </div>
       <div className="activity-list">
@@ -280,7 +280,7 @@ function ShareStoryCard() {
         </div>
       </div>
       <div className="form-grid">
-        <Field label="Which course? (optional)" htmlFor="story-course">
+        <Field label="Which practice set? (optional)" htmlFor="story-course">
           <select id="story-course" value={courseId} onChange={(e) => setCourseId(e.target.value)} data-testid="select-testimonial-course">
             <option value="">General feedback</option>
             {courses.map((c) => (

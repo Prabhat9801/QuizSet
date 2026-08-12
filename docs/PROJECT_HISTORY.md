@@ -666,3 +666,45 @@ topics UI; Live Test scope selector) that all landed cleanly with zero merge con
   (no real email to send to), which now get a clear error explaining that instead of a silently-fake
   "sent!" toast. Also added a show/hide eye-icon toggle on every password field across Login, Signup,
   and the new reset flow's own password step.
+
+---
+
+## 2026-08-12 (later) — "Course" renamed to "Practice Set" in user-facing text; landing page reframed
+
+User's real concern: the word "Course" on the landing page read like a video-lecture platform pitch
+(Udemy-style expectation) to a prospective coaching owner, when this product is actually a real-time
+quiz/practice engine with management/analytics on top — nothing here is "video content," and the
+mismatch would set the wrong expectation before a coaching ever signs up.
+
+- **Renamed "Course"/"Courses" → "Practice Set"/"Practice Sets" in USER-FACING TEXT ONLY** — deliberately
+  NOT a full rename: database table names, API routes (`/api/courses`), URL paths
+  (`/student/courses/:id`), TypeScript type names (`Course`, `CourseWithCount`), variable/prop names
+  (`courseId`, `course`), and file names (`Courses.tsx`, `CourseCreate.tsx`, etc.) are all UNCHANGED —
+  only what actually renders on screen (page titles, button labels, nav labels, empty-state copy, toast
+  messages) changed. This was a deliberate scope decision (asked and confirmed) to keep the change safe
+  and fast rather than touching 70+ files' internals for a naming preference. There's now a genuine
+  terminology COLLISION with the pre-existing "Practice Sets" feature (fixed 100-question worksheets,
+  "Set 1"..."Set N") — the user was made aware of this and chose the rename anyway; that existing
+  feature's own text was left completely untouched, only "Course"-referring text elsewhere now also says
+  "Practice Set" for a different underlying concept (question bank + full practice system + price).
+- **New landing page section**, inserted between the existing "Results + coaching analytics" section and
+  "Payments" — pitches the business/management side (real Notifications, per-practice-set revenue,
+  weak-student flags) that the rest of the page didn't mention at all, using a small illustrative
+  notification-list mockup styled to match the landing page's existing white-background card aesthetic
+  (new `.landing-notification-list`/`.landing-notification-row`/`.landing-notification-dot` CSS, separate
+  from the real dashboard's dark-context `.notification-row` styling). New `#manage` nav anchor added
+  alongside the existing section anchors.
+- **Coaching owner's own profile page**, closing a gap explicitly flagged in an earlier entry: new
+  `CoachingProfile.tsx` at `/coaching/settings` (previously a `GenericPage` placeholder) — editable
+  name/phone, read-only email, distinct from `Branding.tsx`'s tenant-identity settings (the page's own
+  copy explicitly cross-references Branding so a coaching owner doesn't confuse "who am I" with "what
+  does my coaching look like to students"). Near-identical structure to the student `Profile.tsx` since
+  both read/write the same `profiles.name`/`.phone` columns through the same `PATCH /api/profiles/:id`
+  route — kept as a separate component rather than branching the student page on role, since the
+  copy/framing genuinely differs per role. Both profile pages' stale "password changes aren't available
+  yet" notice was also updated to point at the real forgot-password flow added earlier this session.
+- Three parallel subagent tasks for this pass hit the session's rate limit mid-work and were
+  terminated — their partial, already-applied file edits were left in a compiling, typechecked-clean
+  state (confirmed before continuing) and the remaining work (the landing page section's actual JSX,
+  the coaching profile page, one leftover "Course" string in a certificate-name fallback in mock.ts)
+  was finished directly rather than re-dispatching agents, once the session limit reset.

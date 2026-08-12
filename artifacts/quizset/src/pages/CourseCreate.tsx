@@ -41,13 +41,13 @@ export function CreateCourse() {
       preview: Math.max(0, Number(form.preview) || 0),
       status: 'Draft',
     });
-    toast('Course created', 'Request a question bank next — it stays in Draft until that bank is finalized.');
+    toast('Practice set created', 'Request a question bank next — it stays in Draft until that bank is finalized.');
     navigate(`/coaching/courses/${course.id}`);
   };
 
   const next = () => {
     if (step === 0 && !form.name.trim()) {
-      toast('Name your course', 'Give it a clear name before continuing.', 'danger');
+      toast('Name your practice set', 'Give it a clear name before continuing.', 'danger');
       return;
     }
     if (step < STEPS.length - 1) setStep(step + 1);
@@ -57,12 +57,12 @@ export function CreateCourse() {
   return (
     <>
       <PageHeader
-        eyebrow="Course studio"
-        title="Create a course"
-        description="Set the shape of the course now — you'll request its question bank right after."
+        eyebrow="Practice set studio"
+        title="Create a practice set"
+        description="Set the shape of the practice set now — you'll request its question bank right after."
         action={
           <Link href="/coaching/courses" className="btn btn-ghost">
-            <ArrowLeft size={14} /> Back to courses
+            <ArrowLeft size={14} /> Back to practice sets
           </Link>
         }
       />
@@ -78,16 +78,16 @@ export function CreateCourse() {
         <Card>
           {step === 0 && (
             <>
-              <h2 className="wizard-title">Give your course a clear shape.</h2>
-              <p className="wizard-sub">Students should know what this course is for before they start. It'll come with its own complete practice system — Topic-wise, Unit-wise, Multi-unit, Custom and Full, all untimed.</p>
-              <Field label="Course name" required>
+              <h2 className="wizard-title">Give your practice set a clear shape.</h2>
+              <p className="wizard-sub">Students should know what this practice set is for before they start. It'll come with its own complete practice system — Topic-wise, Unit-wise, Multi-unit, Custom and Full, all untimed.</p>
+              <Field label="Practice set name" required>
                 <input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="SSC CGL 2026 preparation" />
               </Field>
               <Field label="Subject">
                 <input className="form-input" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} placeholder="Quantitative Aptitude, General English…" />
               </Field>
               <Field label="Description">
-                <textarea className="form-input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What will this course help learners practise?" />
+                <textarea className="form-input" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What will this practice set help learners practise?" />
               </Field>
             </>
           )}
@@ -114,9 +114,9 @@ export function CreateCourse() {
           {step === 2 && (
             <>
               <h2 className="wizard-title">Ready to create.</h2>
-              <p className="wizard-sub">This course starts in Draft — you'll request its question bank next, and can only publish once that bank is finalized.</p>
+              <p className="wizard-sub">This practice set starts in Draft — you'll request its question bank next, and can only publish once that bank is finalized.</p>
               <div className="publish-summary">
-                <b>{form.name || 'Untitled course'}</b>
+                <b>{form.name || 'Untitled practice set'}</b>
                 <span>
                   {form.subject} · {salePaise ? formatRupees(salePaise) : 'Free'}
                 </span>
@@ -130,7 +130,7 @@ export function CreateCourse() {
             </Button>
             {step === STEPS.length - 1 ? (
               <Button onClick={finish} disabled={invalidMrp || !form.name.trim()}>
-                <Send size={14} /> Create course
+                <Send size={14} /> Create practice set
               </Button>
             ) : (
               <Button onClick={next}>

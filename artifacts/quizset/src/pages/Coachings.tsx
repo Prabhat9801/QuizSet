@@ -70,7 +70,7 @@ export function Coachings() {
       <PageHeader
         eyebrow="Platform network"
         title="Coachings"
-        description="Manage every institute that trusts QuizSet with their digital course business."
+        description="Manage every institute that trusts QuizSet with their digital practice set business."
         action={
           <Button onClick={() => setOpen(true)}>
             <Plus size={15} /> Create coaching
@@ -81,7 +81,7 @@ export function Coachings() {
       <div className="stats-grid">
         <Stat label="Total coachings" value={String(active)} icon={<Users />} />
         <Stat label="Total students across network" value={totalStudents.toLocaleString('en-IN')} icon={<CheckCircle2 />} />
-        <Stat label="Courses published" value={String(Object.values(courseCounts).reduce((a, b) => a + b, 0))} icon={<Clock3 />} />
+        <Stat label="Practice sets published" value={String(Object.values(courseCounts).reduce((a, b) => a + b, 0))} icon={<Clock3 />} />
         <Stat label="Revenue collected" value={formatRupees(Object.values(revenueByTenant).reduce((a, b) => a + b, 0))} icon={<Pause />} />
       </div>
 
@@ -100,7 +100,7 @@ export function Coachings() {
                 <th>Owner</th>
                 <th>Students</th>
                 <th>Plan</th>
-                <th>Courses</th>
+                <th>Practice Sets</th>
                 <th>Revenue</th>
                 <th>Actions</th>
               </tr>
@@ -176,7 +176,7 @@ export function Coachings() {
           <div className="success-panel">
             <CheckCircle2 size={27} />
             <h3>{created.name} is ready</h3>
-            <p>Share this join code with students and use the workspace to configure your first course.</p>
+            <p>Share this join code with students and use the workspace to configure your first practice set.</p>
             <div className="code-grid">
               <div>
                 <small>COACHING ID</small>

@@ -82,11 +82,11 @@ export function CoachingDashboard() {
 
   return (
     <>
-      <PageHeader eyebrow={`${tenant.name} workspace`} title={`Good morning, ${tenant.owner || tenant.name}`} description="Your academy's courses, students and revenue at a glance." action={<Link href="/coaching/courses/create" className="btn btn-primary"><Plus size={15} /> Create course</Link>} />
+      <PageHeader eyebrow={`${tenant.name} workspace`} title={`Good morning, ${tenant.owner || tenant.name}`} description="Your academy's practice sets, students and revenue at a glance." action={<Link href="/coaching/courses/create" className="btn btn-primary"><Plus size={15} /> Create practice set</Link>} />
       <div className="stats-grid stagger">
         <Stat icon={<IndianRupee size={16} />} label="Revenue" value={formatRupees(revenue)} />
         <Stat icon={<Users />} label="Students" value={String(studentCount)} />
-        <Stat icon={<BookOpen />} label="Published courses" value={String(published)} />
+        <Stat icon={<BookOpen />} label="Published practice sets" value={String(published)} />
         <Stat icon={<Play />} label="Upcoming live tests" value={String(pendingJoinCount)} />
       </div>
       <Card>
@@ -100,8 +100,8 @@ export function CoachingDashboard() {
           <Link href="/coaching/courses/create">
             <Plus size={17} />
             <span>
-              <b>Create course</b>
-              <small>Configure a new course</small>
+              <b>Create practice set</b>
+              <small>Configure a new practice set</small>
             </span>
             <ArrowUpRight size={15} />
           </Link>
@@ -125,7 +125,7 @@ export function CoachingDashboard() {
             <BookOpen size={17} />
             <span>
               <b>Request question bank</b>
-              <small>Give your next course a head start</small>
+              <small>Give your next practice set a head start</small>
             </span>
             <ArrowUpRight size={15} />
           </Link>
@@ -165,7 +165,7 @@ export function StudentDashboard() {
         <div className="student-main">
           <div className="card-title">
             <div>
-              <h2>Available courses</h2>
+              <h2>Available practice sets</h2>
               <p>Chosen by {tenant.name} for your path</p>
             </div>
             <Link href="/student/courses" className="text-link">
@@ -191,7 +191,7 @@ export function StudentDashboard() {
                   <strong>{c.sale ? formatRupees(c.sale) : 'Free'}</strong>
                 </div>
                 <Link href={`/student/courses/${c.id}`} className="btn btn-ghost" style={{ width: '100%' }}>
-                  View course <ArrowUpRight size={14} />
+                  View practice set <ArrowUpRight size={14} />
                 </Link>
               </Card>
             ))}

@@ -5,14 +5,22 @@ import { useApp } from '@/contexts/AppContext';
 import { ApiError, profileService } from '@/services/api';
 
 /**
- * Real `/student/profile` screen (previously a `GenericPage` placeholder —
- * see App.tsx's route table). Email is read-only: it's the Supabase auth
- * identity, and changing it is out of scope here (would need a re-verification
- * flow, not a plain profile PATCH). Name/phone save via the same
- * `PATCH /api/profiles/:id` route Students.tsx already uses for name/status,
- * now also accepting `phone` — see profiles.ts's own comment on that guard.
+ * Real `/coaching/settings` screen (previously a `GenericPage` placeholder —
+ * see App.tsx's route table) — the coaching OWNER's own personal details
+ * (name/email/phone), distinct from Branding.tsx's tenant-identity settings
+ * (institute name, colors, logo, support contact, join code). This page
+ * exists purely for "who am I", not "what does my coaching look like to
+ * students" — a coaching owner looking for their institute's public
+ * identity should go to Branding instead.
+ *
+ * Structurally a near-copy of Profile.tsx (the student version) since the
+ * underlying data (name/email/phone on the same `profiles` row) and the
+ * `PATCH /api/profiles/:id` route are identical for every role — kept as a
+ * separate component rather than branching Profile.tsx on role, since the
+ * copy/framing genuinely differs (a coaching owner needs the Branding
+ * cross-reference note; a student doesn't).
  */
-export function Profile() {
+export function CoachingProfile() {
   const { user, toast } = useApp();
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState('');
@@ -57,8 +65,8 @@ export function Profile() {
     <>
       <PageHeader
         eyebrow="Your account"
-        title="Profile"
-        description="Keep your contact details up to date."
+        title="Settings"
+        description="Your own name and contact details — for your coaching's public branding, go to Branding instead."
         action={
           <Button onClick={save} disabled={saving || loading}>
             <Save size={14} /> {saving ? 'Saving…' : 'Save changes'}
@@ -69,7 +77,7 @@ export function Profile() {
         <div className="card-title">
           <div>
             <h2>Personal details</h2>
-            <p>Visible only to you and your coaching</p>
+            <p>This is about you, not your institute — see Branding for your coaching's name, logo and colors.</p>
           </div>
           <User size={19} color="hsl(var(--primary))" />
         </div>
