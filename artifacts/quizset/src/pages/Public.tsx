@@ -598,6 +598,7 @@ export function Landing() {
                 { icon: <Users size={14} />, title: 'New student joined', body: 'Aman Gupta joined via join code', time: '38m ago' },
                 { icon: <Flag size={14} />, title: 'Live Test ended', body: 'Weekly Mock Test #4 results are ready', time: '1h ago' },
                 { icon: <BarChart3 size={14} />, title: 'Needs attention', body: "Aarav hasn't practiced in 3 days", time: '3h ago' },
+                { icon: <Sparkles size={14} />, title: 'Weak topic flagged', body: 'Priya is under 40% average on Time & Work across her last 3 attempts', time: 'Yesterday' },
               ].map((n) => (
                 <div className="landing-notification-row" key={n.title + n.time}>
                   <span className="landing-notification-dot">{n.icon}</span>
@@ -682,7 +683,7 @@ export function Landing() {
             <Stat label="Free messages" value="5" icon={<Sparkles />} />
           </div>
         </div>
-        <Card className="chat-card" style={{ minHeight: 'auto' }}>
+        <Card className="chat-card landing-chat-mock" style={{ minHeight: 'auto' }}>
           <div className="chat-head">
             <div className="ai-avatar">
               <Sparkles size={17} />
@@ -741,6 +742,7 @@ export function Landing() {
             Clarity before<br />
             <em>you commit.</em>
           </h2>
+          <p>The questions every coaching asks before signing up — pricing, content, and how much control you actually have.</p>
         </div>
         <div className="faqs">
           {FAQS.map((item, i) => (
