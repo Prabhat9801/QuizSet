@@ -118,12 +118,22 @@ password kisi ko de de (sequential handoff), koi bhi session-system ye
 distinguish nahi kar sakta "owner ne khud device badla" vs "kisi aur ko de
 diya".
 
-### 3. **Email — sirf Supabase ka default sender**
+### 3. ⏳ IN PROGRESS — Email, Gmail SMTP se fix ho raha hai
 Password-reset aur signup-confirmation Supabase Auth ke default email se
-jaate hain — koi Resend/SendGrid/Postmark/SMTP configured nahi hai. Free-tier
-Supabase email ka daily-send-limit bahut kam hai aur spam-folder me jaana
-common hai. Real students ke liye ye unreliable hoga.
-→ Production SMTP provider laga do launch se pehle.
+jaate hain — koi custom SMTP configured nahi tha. Free-tier Supabase email
+ka daily-send-limit bahut kam hai aur spam-folder me jaana common hai.
+
+**Important: ye CODE change nahi hai.** Email-sending poori tarah Supabase
+Auth khud karta hai (`supabase.auth.signUp()` /
+`resetPasswordForEmail()` — dekhein `services/supabase.ts`) — is repo me
+koi email-sending code hi nahi hai jo badalna ho. Fix Supabase
+**Dashboard** me hai: Authentication → Emails → "Enable Custom SMTP",
+Gmail App Password ke saath.
+
+→ User Gmail account + App Password bana raha hai, Supabase dashboard me
+khud configure karega. Note: Gmail SMTP ka bhi apna daily-limit (~500/din)
+hai — chhoti coaching ke liye MVP ke liye theek hai, scale hone par
+Resend/SendGrid jaisa dedicated transactional-email provider chahiye hoga.
 
 ### 4. **Zero automated tests**
 Poore codebase me ek bhi `.test.ts`/`.spec.ts` nahi hai. Jo bhi verification
@@ -133,14 +143,19 @@ kuch tootne ka risk hai bina turant pata chale.
 → MVP ke liye critical nahi, lekin jaise-jaise feature badhenge, iske bina
 bugs slip karte rahenge unnoticed.
 
-### 5. **Live production deployment confirm nahi hai**
-Dockerfile aur Render-deploy design ache se bana hai (single-service,
-env-var-timing-trap solved), aur uske steps manually simulate karke verify
-kiye gaye — **lekin koi confirmed live/running production URL repo me record
-nahi hai.** Docker image khud kabhi build/run nahi hua is session me (no
-Docker available).
-→ Confirm karo Render pe actual live deploy hai ya sirf design/local-verify
-tak hi gaya tha.
+### 5. ✅ CONFIRMED LIVE (2026-08-16) — https://quizset.onrender.com
+Real health-check kiya gaya: `GET /api/healthz` → `200 {"status":"ok"}`.
+`GET /api/profiles/me` (no auth) → `401 {"error":"Missing bearer token."}`
+— exactly is repo ke `middlewares/auth.ts` jaisa hi. **Deployment genuinely
+live hai aur is codebase ka hi hai.**
+
+⚠️ **Lekin abhi PURANA build chal raha hai**: `POST /api/auth/claim-session`
+aur `POST /api/payments/create-order` (dono is session me abhi-abhi add
+kiye) live site pe `404` de rahe hain — matlab GitHub pe latest code
+(`727f8dc`) push ho chuka hai, lekin Render ne abhi tak us commit se
+redeploy nahi kiya. User Render dashboard se "Manual Deploy" trigger
+karega — us `.env` me `RAZORPAY_KEY_ID`/`RAZORPAY_KEY_SECRET` bhi add
+karna hoga taaki naya payment route kaam kare.
 
 ---
 
@@ -162,12 +177,16 @@ tak hi gaya tha.
 
 ```
 🔴 MUST (paisa/real-user launch se pehle):
-[x] Real payment gateway integrate karo — DONE (2026-08-16), sirf
-    RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET test keys daal ke live verify karna
-    baaki hai
-[x] Single-session/device-limit enforcement — DONE (2026-08-16)
-[ ] Production email/SMTP provider laga do (Supabase default hata do)
-[ ] Confirm karo Render (ya jahan bhi) pe actual live deployment hai
+[x] Real payment gateway integrate karo — DONE (2026-08-16, code)
+[x] Single-session/device-limit enforcement — DONE (2026-08-16, code)
+[x] Live deployment confirm — DONE (2026-08-16), https://quizset.onrender.com
+    live hai, healthz + auth dono verified
+[ ] Render pe REDEPLOY trigger karo — GitHub pe latest code hai, Render
+    abhi purana build serve kar raha hai (naye routes 404)
+[ ] Render env vars me RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET add karo
+    (test keys se shuru karo)
+[ ] Supabase Dashboard → Auth → SMTP me Gmail App Password configure
+    karo (in-progress, user khud kar raha hai)
 
 🟡 SHOULD (launch ke turant baad, but soon):
 [ ] Kam se kam critical-path automated tests (signup→payment→access)
@@ -181,14 +200,22 @@ tak hi gaya tha.
 
 ---
 
-## Short answer
+## Short answer (2026-08-16, updated)
 
 **Feature-completeness ke hisaab se QuizSet bahut aage hai** — CLAUDE.md khud
 jitna bolta hai usse zyada ban chuka hai, aur zyadatar cheezein sirf code nahi
 balki **live Supabase data se verify** bhi ho chuki hain.
 
-Lekin **real paisa/marketing launch ke liye 2 cheezein absolutely non-negotiable
-hain**: (1) real payment gateway (abhi bilkul nahi hai), (2)
-session/device-sharing protection (abhi bilkul nahi hai — quiz-ITI me bana
-diya hai, QuizSet me banana baaki hai). Email aur deployment-confirmation
-bhi launch se pehle chahiye, lekin wo comparatively chhote kaam hain.
+**Dono bade launch-blockers ab CODE-COMPLETE hain**: real Razorpay payment
+gateway aur single-session/device-sharing protection — dono live database
+pe push ho chuke hain aur GitHub pe committed/pushed hain.
+
+**Live deployment bhi CONFIRMED hai** (https://quizset.onrender.com,
+health-check verified) — lekin abhi **purana build** serve kar raha hai.
+Asli MVP-launch ke liye ab sirf 3 chhote, non-code operational steps baaki
+hain:
+1. Render pe manual redeploy trigger karna (latest commit already GitHub pe hai)
+2. Render env vars me Razorpay test keys add karna
+3. Supabase dashboard me Gmail SMTP configure karna (in-progress)
+
+Ye teeno "5 minute ka dashboard kaam" hain, koi naya code nahi likhna hai.
