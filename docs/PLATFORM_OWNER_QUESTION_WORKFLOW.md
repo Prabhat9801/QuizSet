@@ -7,7 +7,82 @@ students ko live dikhne tak.
 
 ---
 
-## Poora Flow — Ek Nazar Me
+## 🚀 SIRF EK PROMPT — Claude Khud Sab Kar Dega
+
+Roz-roz manual steps follow karne ki zaroorat nahi. VS Code me is QuizSet
+project ko kholo, Claude Code chalu karo, aur neeche wala **poora prompt
+copy-paste kar do** (kisi specific coaching/course ka naam bhar ke, ya
+khaali chhod do to Claude khud pehli pending request uthayega). Claude
+khud request padhega, syllabus/notes dekhega, questions generate karega,
+validate + seed karega, aur status update karega — aapko sirf beech-beech
+me confirm karna hoga (jaise "haan ye questions theek hain, aage badho").
+
+```
+Tum ek QuizSet platform-owner assistant ho. Is repo (QuizSet) me ek
+pending question-bank request ko poora end-to-end handle karo.
+
+Coaching: [YAHAN COACHING KA NAAM DAALO, ya khaali chhodo]
+Course:   [YAHAN COURSE KA NAAM DAALO, ya khaali chhodo]
+
+Follow ye poora process khud:
+
+1. artifacts/api-server/src/routes/question-bank-requests.ts aur
+   lib/db/src/schema/question-bank-requests.ts padho taaki schema samajh
+   sako. Phir live database se (DATABASE_URL artifacts/api-server/.env
+   me hai) pending question_bank_requests dekho — agar coaching/course
+   naam diya hai to wahi match karo, nahi to sabse purani "Pending"
+   request uthao. Mujhe uska poora detail dikhao (coaching, course,
+   subjects, questionsRequired, difficulty, unitsTopics, syllabusFileName)
+   aur confirm karo ki yehi request process karni hai.
+
+2. Agar request me syllabusFileName diya hai, mujhse poochho ki wo file
+   kahan rakhi hai (ya agar coaching ne unitsTopics text me hi likh diya
+   hai, wahi use karo). Us syllabus/notes se units aur topics ka breakdown
+   nikaalo.
+
+3. Har unit/topic ke liye khud MCQ questions generate karo — poore
+   questionsRequired count tak, requested difficulty ke hisaab se, aur
+   requested subjects cover karte hue. Har question ka correctIndex
+   options (A/B/C/D) pe cycle karo — sab ek hi option pe mat jhukao. Har
+   question ke saath ek chhota explanation bhi likho.
+
+4. In questions ko is exact JSON format me likho, ek folder me (per-topic
+   alag file, jaise scratch/seed/<topic-slug>.json):
+   { "unitName": "...", "topicName": "...",
+     "questions": [{ "question": "...", "options": ["...","...","...","..."],
+     "correctIndex": 0-3, "explanation": "..." }, ...] }
+
+5. `pnpm --filter @workspace/scripts run seed-questions -- --coaching
+   "<naam>" --course "<naam>" --dir <folder> --dry-run` chalao. Result
+   mujhe dikhao (kitne naye, kitne duplicate, koi error/answer-skew
+   warning) — mujhse confirm lo ki insert kar dena hai.
+
+6. Confirm milne par wahi command bina --dry-run ke chalao, taaki
+   questions genuinely database me chale jaayein.
+
+7. Jis question_banks row me ye gaye (course.questionBankId se pata
+   chalega), uska status database me check karo — agar abhi
+   "Generating" hai, mujhe bata do aur poochho kya "Platform Review" me
+   badalna hai (ye status app ke UI se badalna safe hai; agar main
+   seedhe DB se badalne ko kahoon, tabhi karo, warna sirf bata do ki
+   app me jaake ye status khud badal loon).
+
+8. Aakhir me ek chhota summary do: kitne questions, kaunse topics, kya
+   review ke liye ready hai, aur agla step kya hai (mujhe app me jaake
+   kya karna hai).
+
+Har step ke beech, agar kuch ambiguous ho (naam match na ho, syllabus
+file na mile, request hi na mile), rukna aur mujhse poochna — khud guess
+karke aage mat badhna.
+```
+
+**Bas itna hi karna hai** — poora upar wala process manual reference/troubleshooting
+ke liye neeche bhi likha hai, agar kabhi step-by-step khud karna ho ya
+Claude ke bina samajhna ho ki peeche kya ho raha hai.
+
+---
+
+## Poora Flow — Ek Nazar Me (Manual/Reference)
 
 ```
 1. Coaching request bharti hai (app me)
