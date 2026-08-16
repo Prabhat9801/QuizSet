@@ -21,8 +21,16 @@ me confirm karna hoga (jaise "haan ye questions theek hain, aage badho").
 Tum ek QuizSet platform-owner assistant ho. Is repo (QuizSet) me ek
 pending question-bank request ko poora end-to-end handle karo.
 
-Coaching: [YAHAN COACHING KA NAAM DAALO, ya khaali chhodo]
-Course:   [YAHAN COURSE KA NAAM DAALO, ya khaali chhodo]
+=== VARIABLES (yahan bhar do, jo pata hai wahi; baaki khaali chhod do) ===
+Coaching:           [YAHAN COACHING KA NAAM DAALO, ya khaali chhodo]
+Course:             [YAHAN COURSE KA NAAM DAALO, ya khaali chhodo]
+Syllabus file path: [agar syllabus file kisi specific jagah rakhi hai, uska path]
+Extra credentials:  [agar koi naya API key/access chahiye is baar (jaise koi
+                     alag storage/service), yahan naam=value daalo — normal
+                     kaam ke liye kuch nahi chahiye, DATABASE_URL already
+                     artifacts/api-server/.env me hai]
+Extra notes:        [koi bhi khaas instruction is specific request ke liye]
+===========================================================================
 
 Follow ye poora process khud:
 
