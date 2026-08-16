@@ -22,31 +22,39 @@ Tum ek QuizSet platform-owner assistant ho. Is repo (QuizSet) me ek
 pending question-bank request ko poora end-to-end handle karo.
 
 === VARIABLES (yahan bhar do, jo pata hai wahi; baaki khaali chhod do) ===
-Coaching:           [YAHAN COACHING KA NAAM DAALO, ya khaali chhodo]
-Course:             [YAHAN COURSE KA NAAM DAALO, ya khaali chhodo]
-Syllabus file path: [agar syllabus file kisi specific jagah rakhi hai, uska path]
-Extra credentials:  [agar koi naya API key/access chahiye is baar (jaise koi
-                     alag storage/service), yahan naam=value daalo — normal
-                     kaam ke liye kuch nahi chahiye, DATABASE_URL already
-                     artifacts/api-server/.env me hai]
-Extra notes:        [koi bhi khaas instruction is specific request ke liye]
+COACHING=
+COURSE=
+SYLLABUS_FILE_PATH=
+DATABASE_URL=
+EXTRA_CREDENTIAL_1=
+EXTRA_CREDENTIAL_2=
+NOTES=
 ===========================================================================
+(DATABASE_URL normally artifacts/api-server/.env me already hai — sirf
+tabhi yahan bharo agar is baar koi ALAG database/environment use karna ho.
+EXTRA_CREDENTIAL_* sirf tab bharo jab koi naya API key/access chahiye ho
+is specific request ke liye — jaise koi alag storage/service se syllabus
+laana ho.)
 
 Follow ye poora process khud:
 
 1. artifacts/api-server/src/routes/question-bank-requests.ts aur
    lib/db/src/schema/question-bank-requests.ts padho taaki schema samajh
-   sako. Phir live database se (DATABASE_URL artifacts/api-server/.env
-   me hai) pending question_bank_requests dekho — agar coaching/course
-   naam diya hai to wahi match karo, nahi to sabse purani "Pending"
-   request uthao. Mujhe uska poora detail dikhao (coaching, course,
-   subjects, questionsRequired, difficulty, unitsTopics, syllabusFileName)
-   aur confirm karo ki yehi request process karni hai.
+   sako. DATABASE_URL agar upar VARIABLES me diya hai to wahi use karo,
+   nahi to artifacts/api-server/.env se lo. Phir live database se pending
+   question_bank_requests dekho — agar COACHING/COURSE variable diya hai
+   to wahi match karo, nahi to sabse purani "Pending" request uthao. Mujhe
+   uska poora detail dikhao (coaching, course, subjects, questionsRequired,
+   difficulty, unitsTopics, syllabusFileName) aur confirm karo ki yehi
+   request process karni hai.
 
-2. Agar request me syllabusFileName diya hai, mujhse poochho ki wo file
-   kahan rakhi hai (ya agar coaching ne unitsTopics text me hi likh diya
-   hai, wahi use karo). Us syllabus/notes se units aur topics ka breakdown
-   nikaalo.
+2. Agar request me syllabusFileName diya hai: pehle SYLLABUS_FILE_PATH
+   variable check karo (agar bhara hai to wahi file use karo), nahi to
+   mujhse poochho ki wo file kahan rakhi hai. Ya agar coaching ne
+   unitsTopics text me hi likh diya hai, wahi use karo. Us syllabus/notes
+   se units aur topics ka breakdown nikaalo. Agar EXTRA_CREDENTIAL_*
+   variables bhare hain (jaise kisi external storage/service ka access),
+   unhe isi step me use karo syllabus fetch karne ke liye.
 
 3. Har unit/topic ke liye khud MCQ questions generate karo — poore
    questionsRequired count tak, requested difficulty ke hisaab se, aur
