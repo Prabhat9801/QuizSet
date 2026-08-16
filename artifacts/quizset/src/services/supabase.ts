@@ -61,11 +61,21 @@ export async function getSession(): Promise<Session | null> {
  * refresh — including from another tab). Returns an unsubscribe function;
  * a no-op unsubscribe when Supabase isn't configured, so callers can always
  * call the returned function unconditionally on cleanup.
+ *
+ * `isNewSignIn` distinguishes a genuine "SIGNED_IN" event (real login) from
+ * every other event this same callback also fires for — most importantly
+ * "TOKEN_REFRESHED", which happens silently roughly every hour on an
+ * otherwise-idle tab and is NOT a new login. This matters for
+ * single-active-session enforcement (AppContext's claimSession()): claiming
+ * a new session on every token refresh would kick a user's own
+ * still-open tab/device every hour, which is not what "one active session
+ * per account" is supposed to mean — it should only reset on an actual
+ * fresh sign-in.
  */
-export function onAuthStateChange(callback: (session: Session | null) => void): () => void {
+export function onAuthStateChange(callback: (session: Session | null, isNewSignIn: boolean) => void): () => void {
   if (!supabase) return () => {};
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-    callback(session);
+  const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    callback(session, event === 'SIGNED_IN');
   });
   return () => data.subscription.unsubscribe();
 }

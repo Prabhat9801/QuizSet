@@ -6,7 +6,7 @@ import { storage } from '@/services/storage';
 import { applyBranding, resetBranding } from '@/services/branding';
 import { tenants as seedTenants } from '@/data/seed';
 import { getSession, onAuthStateChange, signOut as supabaseSignOut } from '@/services/supabase';
-import { apiGet, apiPost, ApiError } from '@/services/api/http';
+import { apiGet, apiPost, setApiSessionTokenGetter, ApiError } from '@/services/api/http';
 
 // Shape of `GET /api/profiles/me` — see artifacts/api-server/src/routes/profiles.ts
 // and lib/db/src/schema/profiles.ts. Matches AuthUser's fields one-to-one.
@@ -19,6 +19,47 @@ type ProfileApiRow = {
   status: string;
   createdAt: string;
 };
+
+// Single-active-session enforcement (see the SESSION_TOKEN_HEADER comment in
+// artifacts/api-server/src/middlewares/auth.ts for the full rationale: a
+// student sharing join-code + login previously let unlimited real people
+// share one paid "seat," undetected). localStorage (not sessionStorage) so a
+// page reload doesn't lose track of "is this still my active session" — the
+// goal is telling DEVICES apart, not tabs/reloads apart. A stale/superseded
+// token surfaces to the client as a 401 with code SESSION_SUPERSEDED (see
+// ApiError handling in the polling effect below and in api call sites that
+// choose to react to it specially).
+const SESSION_TOKEN_KEY = 'quizset.activeSessionToken';
+const SESSION_POLL_MS = 45_000;
+
+function getStoredSessionToken(): string | null {
+  return localStorage.getItem(SESSION_TOKEN_KEY);
+}
+function setStoredSessionToken(token: string | null) {
+  if (token) localStorage.setItem(SESSION_TOKEN_KEY, token);
+  else localStorage.removeItem(SESSION_TOKEN_KEY);
+}
+
+// Registered once, at module scope — `setApiSessionTokenGetter` itself is a
+// single global seam (see services/api/http.ts), so there is no benefit to
+// re-registering it on every render; it just needs to always read the
+// latest value, which localStorage already gives it for free.
+setApiSessionTokenGetter(getStoredSessionToken);
+
+/** Claims this device as the account's one allowed active session — logs
+ * out any other device already signed in as this account within one poll
+ * cycle. Called after a real login resolves; non-fatal on failure (e.g. a
+ * brand-new signup with no profile row yet — see fetchAuthUserForSession's
+ * own self-heal comment) since the caller's normal flow shouldn't break
+ * over this. */
+async function claimSession(): Promise<void> {
+  try {
+    const { sessionToken } = await apiPost<{ sessionToken: string }>('/api/auth/claim-session');
+    setStoredSessionToken(sessionToken);
+  } catch (err) {
+    console.error('Failed to claim an active session for this device.', err);
+  }
+}
 
 function profileToAuthUser(profile: ProfileApiRow): AuthUser {
   return {
@@ -89,6 +130,13 @@ type Ctx = {
   logout: () => void;
   /** Call after any write that could change tenant fields (e.g. branding save, coaching creation). */
   refreshTenants: () => Promise<void>;
+  /** True right after this device was force-signed-out because another
+   * device logged into the same account (single-active-session
+   * enforcement) — the login screen reads this once to explain why, then
+   * should call clearSessionKicked() so a later, unrelated sign-out doesn't
+   * show the same message again. */
+  sessionKicked: boolean;
+  clearSessionKicked: () => void;
 };
 
 const AppCtx = createContext<Ctx | null>(null);
@@ -107,6 +155,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // whether it also needs to end the real Supabase session, and so the auth
   // listener below knows not to stomp on a mock-only sign-in with `null`.
   const hasRealSession = useRef(false);
+  // Surfaced to the login screen so it can explain WHY the user landed back
+  // there instead of silently looking like an ordinary sign-out.
+  const [sessionKicked, setSessionKicked] = useState(false);
 
   // Real-session bootstrap + live subscription. Runs once on mount:
   //  1. Check for an existing real Supabase session (e.g. after a page
@@ -123,7 +174,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    const applySession = async (session: Session | null) => {
+    const applySession = async (session: Session | null, isNewSignIn: boolean) => {
       if (session) {
         const authUser = await fetchAuthUserForSession();
         if (cancelled) return;
@@ -139,6 +190,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // can't reintroduce the same stale state.
           storage.remove('auth');
           setUser(authUser);
+          // Only on a genuine fresh sign-in, never on a background token
+          // refresh (see onAuthStateChange's isNewSignIn doc comment) — this
+          // is what actually enforces "one active session" by invalidating
+          // whatever device was previously logged in as this account.
+          if (isNewSignIn) void claimSession();
         }
         // A real session with no matching profile row (see the signup gap
         // noted in services/supabase.ts) intentionally falls through to
@@ -156,11 +212,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
 
     getSession().then((session) => {
-      if (!cancelled) void applySession(session);
+      if (!cancelled) void applySession(session, false);
     });
 
-    const unsubscribe = onAuthStateChange((session) => {
-      if (!cancelled) void applySession(session);
+    const unsubscribe = onAuthStateChange((session, isNewSignIn) => {
+      if (!cancelled) void applySession(session, isNewSignIn);
     });
 
     return () => {
@@ -209,6 +265,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     else resetBranding();
   }, [tenant.id, tenant.primaryColor, tenant.secondaryColor, user?.role]);
 
+  // Polls every ~45s to check whether another device has since logged into
+  // this same account (which overwrites active_session_token server-side —
+  // see claim-session). A stale token surfaces as a 401 SESSION_SUPERSEDED
+  // from ANY api call this tab happens to make (the middleware checks on
+  // every authenticated request, not just this poll) — this effect exists
+  // for tabs that might otherwise sit idle without making one for a while,
+  // so the kick isn't only detected the next time the user happens to click
+  // something. Uses GET /api/profiles/me as a cheap, always-authenticated
+  // probe rather than a dedicated endpoint.
+  useEffect(() => {
+    if (!hasRealSession.current || !user) return;
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        await apiGet('/api/profiles/me');
+      } catch (err) {
+        if (cancelled) return;
+        if (err instanceof ApiError && (err.data as { code?: string } | null)?.code === 'SESSION_SUPERSEDED') {
+          setSessionKicked(true);
+          setStoredSessionToken(null);
+          hasRealSession.current = false;
+          void supabaseSignOut();
+          setUser(null);
+        }
+      }
+    }
+
+    const interval = setInterval(poll, SESSION_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [user]);
+
   const toast = (title: string, description?: string, tone: Toast['tone'] = 'success') => {
     const id = Date.now() + Math.random();
     setToasts((x) => [...x, { id, title, description, tone }]);
@@ -228,6 +319,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     authService.logout();
     if (hasRealSession.current) {
       hasRealSession.current = false;
+      setStoredSessionToken(null);
       void supabaseSignOut();
     }
     setUser(null);
@@ -260,6 +352,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         refreshTenants,
+        sessionKicked,
+        clearSessionKicked: () => setSessionKicked(false),
       }}
     >
       {children}

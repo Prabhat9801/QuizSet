@@ -30,15 +30,32 @@ export { ApiError };
 export type { AuthTokenGetter };
 
 /**
- * The auth seam this module exists for: real session-based login (a real
- * Supabase JWT) is NOT wired into this frontend yet — see the top comment in
- * `services/api.ts` for the full scope note. Whoever wires it later calls
- * this once with a getter that returns the current session's access token
- * (or `null` when signed out); every request made through this file will
- * then carry `Authorization: Bearer <token>` automatically.
+ * The auth seam this module exists for: wired once at startup in main.tsx
+ * with a getter that returns the current real Supabase session's access
+ * token (or `null` when signed out) — every request made through this file
+ * then carries `Authorization: Bearer <token>` automatically.
  */
 export function setApiAuthTokenGetter(getter: AuthTokenGetter | null): void {
   setAuthTokenGetter(getter);
+}
+
+/**
+ * Second, app-owned header — not part of `@workspace/api-client-react`'s
+ * generic bearer-token seam, since "which device is this" is specific to
+ * this app's single-active-session feature (see the SESSION_TOKEN_HEADER
+ * comment in artifacts/api-server/src/middlewares/auth.ts), not something a
+ * shared HTTP client package should know about. Wired once at startup in
+ * main.tsx to read the token AuthContext stores after claim-session.
+ */
+let _sessionTokenGetter: (() => string | null) | null = null;
+export function setApiSessionTokenGetter(getter: (() => string | null) | null): void {
+  _sessionTokenGetter = getter;
+}
+
+function withSessionTokenHeader(headers?: Record<string, string>): Record<string, string> | undefined {
+  const token = _sessionTokenGetter?.();
+  if (!token) return headers;
+  return { ...headers, 'X-Session-Token': token };
 }
 
 /**
@@ -66,13 +83,14 @@ function toQueryString(params?: Record<string, QueryValue>): string {
  * with `/`) so `setApiBaseUrl`'s prefix actually applies — see
  * `applyBaseUrl` in custom-fetch.ts. */
 export function apiGet<T>(path: string, params?: Record<string, QueryValue>): Promise<T> {
-  return customFetch<T>(`${path}${toQueryString(params)}`, { method: 'GET' });
+  return customFetch<T>(`${path}${toQueryString(params)}`, { method: 'GET', headers: withSessionTokenHeader() });
 }
 
 export function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return customFetch<T>(path, {
     method: 'POST',
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers: withSessionTokenHeader(),
   });
 }
 
@@ -80,6 +98,7 @@ export function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   return customFetch<T>(path, {
     method: 'PATCH',
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers: withSessionTokenHeader(),
   });
 }
 
@@ -87,11 +106,12 @@ export function apiPut<T>(path: string, body?: unknown): Promise<T> {
   return customFetch<T>(path, {
     method: 'PUT',
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers: withSessionTokenHeader(),
   });
 }
 
 export function apiDelete<T = void>(path: string): Promise<T> {
-  return customFetch<T>(path, { method: 'DELETE' });
+  return customFetch<T>(path, { method: 'DELETE', headers: withSessionTokenHeader() });
 }
 
 /** POST that returns the raw streaming Response (server-sent events), for
@@ -101,5 +121,6 @@ export function apiPostStream(path: string, body?: unknown): Promise<Response> {
   return openStream(path, {
     method: 'POST',
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers: withSessionTokenHeader(),
   });
 }

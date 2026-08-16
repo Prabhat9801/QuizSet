@@ -8,11 +8,17 @@
  * details (SQL, stack traces) never leak to the client. */
 export class HttpError extends Error {
   readonly status: number;
+  /** Optional machine-readable discriminator for a client that needs to
+   * react differently to specific error causes (not just the status code)
+   * — e.g. SESSION_SUPERSEDED, which should force a real sign-out rather
+   * than being treated as a generic 401. Absent for ordinary errors. */
+  readonly code?: string;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.name = "HttpError";
     this.status = status;
+    this.code = code;
   }
 }
 

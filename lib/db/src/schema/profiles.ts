@@ -24,6 +24,18 @@ export const profiles = pgTable(
     // outstanding, Suspended to revoke access without deleting history).
     // Coaching/platform profiles are just always Active.
     status: profileStatusEnum("status").notNull().default("Active"),
+    // Enforces "at most one active session per account" — a real business
+    // risk this platform previously had no answer to: a student can hand
+    // their join code + login to friends/family, letting many real people
+    // share one paid "seat" while the coaching owner's per-student counts
+    // silently undercount actual usage. Set by POST /api/auth/claim-session
+    // right after every login (overwriting whatever the previous device
+    // held); `authenticate` middleware checks it on every subsequent
+    // request when the client sends one, rejecting a stale token with 401
+    // SESSION_SUPERSEDED. Null until the first login after this column was
+    // added, or for a profile that's never actually logged in through the
+    // real (non-mock) auth path yet.
+    activeSessionToken: uuid("active_session_token"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

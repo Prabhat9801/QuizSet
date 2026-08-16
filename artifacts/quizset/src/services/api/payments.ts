@@ -1,6 +1,6 @@
 import type { Transaction } from '@/types';
 import { apiGet, apiPost } from './http';
-import { paiseToRupees, rupeesToPaise } from './money';
+import { paiseToRupees } from './money';
 
 type PaymentApiRow = {
   id: string;
@@ -16,17 +16,6 @@ type PaymentApiRow = {
   createdAt: string;
 };
 
-/**
- * NAMING MISMATCH: `studentProfileId` (backend) vs `studentId` (frontend
- * `Transaction`) — same rename pattern as `attempts.ts`.
- * PAISE MISMATCH: `Transaction.amount` (frontend, rupees) vs `totalPaise`
- * (backend) — same money.ts boundary conversion as courses/live tests.
- * `platformSharePaise`/`coachingSharePaise` (the 50% commission split,
- * computed and stored server-side — see `payments.ts`'s own comment) have
- * no frontend `Transaction` field at all and are dropped when mapping —
- * mock.ts's `Transaction` never modeled a commission split, only the single
- * customer-facing `amount`.
- */
 function mapPayment(row: PaymentApiRow): Transaction {
   return {
     id: row.id,
@@ -41,31 +30,100 @@ function mapPayment(row: PaymentApiRow): Transaction {
   };
 }
 
+type CreateOrderResponse = {
+  paymentId: string;
+  orderId: string;
+  amountPaise: number;
+  currency: string;
+  razorpayKeyId: string;
+};
+
+// Razorpay's Checkout widget is a browser global (`window.Razorpay`) loaded
+// from their own script — not an npm package, per Razorpay's own integration
+// docs. Loaded lazily (only when a purchase is actually attempted) rather
+// than as a static <script> tag in index.html, since most page loads never
+// trigger a payment.
+let razorpayScriptPromise: Promise<void> | null = null;
+function loadRazorpayCheckout(): Promise<void> {
+  if (typeof window !== 'undefined' && (window as unknown as { Razorpay?: unknown }).Razorpay) {
+    return Promise.resolve();
+  }
+  if (!razorpayScriptPromise) {
+    razorpayScriptPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Could not load the Razorpay checkout script.'));
+      document.head.appendChild(script);
+    });
+  }
+  return razorpayScriptPromise;
+}
+
+type RazorpaySuccessResponse = {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+};
+
+interface RazorpayInstance {
+  open(): void;
+}
+interface RazorpayConstructor {
+  new (options: Record<string, unknown>): RazorpayInstance;
+}
+
 export const paymentService = {
   /**
-   * `input.studentId` is NOT sent: `POST /api/payments` requires the caller
-   * to already be role `student` and always uses `req.auth.userId` as the
-   * payer, never a body field — the same "don't trust the client" rule as
-   * `attemptService.save()`. The 50/50 platform/coaching commission split
-   * is computed and stored server-side (see the route's own comment in
-   * `payments.ts`), so it isn't sent either.
+   * Real Razorpay flow: create-order (server looks up the actual price and
+   * creates a real order) -> open Razorpay's own Checkout widget -> on
+   * success, verify (server independently checks the signature and only
+   * then marks the payment Success + computes the commission split). There
+   * is no client-side "just tell the server it succeeded" step anymore —
+   * see artifacts/api-server/src/routes/payments.ts's file-top comment for
+   * why that was removed.
+   *
+   * `input.amount`/`input.studentId`/`input.tenantId` are NOT sent to
+   * create-order — the server re-derives all of that from `kind`/`refId`
+   * (see resolvePurchase() server-side) specifically so a client can't
+   * assert its own price. They're kept as parameters here only because
+   * existing call sites (StudentCourseLibrary.tsx, AI.tsx) already pass a
+   * `label` for a friendly toast/receipt line before the real amount comes
+   * back from the server.
    */
-  async purchase(input: {
-    tenantId: string;
-    studentId: string;
-    kind: Transaction['kind'];
-    refId: string;
-    label: string;
-    amount: number;
-  }): Promise<Transaction> {
-    const row = await apiPost<PaymentApiRow>('/api/payments', {
-      tenantId: input.tenantId,
-      kind: input.kind,
-      refId: input.refId,
-      label: input.label,
-      totalPaise: rupeesToPaise(input.amount),
+  async purchase(input: { tenantId: string; studentId: string; kind: Transaction['kind']; refId: string; label: string; amount: number }): Promise<Transaction> {
+    void input.amount; // display-only hint from the caller; the server computes the real amount.
+    const order = await apiPost<CreateOrderResponse>('/api/payments/create-order', { kind: input.kind, refId: input.refId });
+
+    await loadRazorpayCheckout();
+
+    const verified = await new Promise<{ ok: boolean; payment: PaymentApiRow }>((resolve, reject) => {
+      const Razorpay = (window as unknown as { Razorpay: RazorpayConstructor }).Razorpay;
+      const rzp = new Razorpay({
+        key: order.razorpayKeyId,
+        order_id: order.orderId,
+        amount: order.amountPaise,
+        currency: order.currency,
+        name: 'QuizSet',
+        description: input.label,
+        prefill: {},
+        handler: (response: RazorpaySuccessResponse) => {
+          apiPost<{ ok: boolean; payment: PaymentApiRow }>('/api/payments/verify', {
+            orderId: response.razorpay_order_id,
+            paymentId: response.razorpay_payment_id,
+            signature: response.razorpay_signature,
+          })
+            .then(resolve)
+            .catch(reject);
+        },
+        modal: {
+          ondismiss: () => reject(new Error('Payment was cancelled.')),
+        },
+      });
+      rzp.open();
     });
-    return mapPayment(row);
+
+    return mapPayment(verified.payment);
   },
 
   /**

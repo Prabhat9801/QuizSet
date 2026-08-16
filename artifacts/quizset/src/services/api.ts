@@ -1,29 +1,30 @@
 /**
- * Real API client — the eventual drop-in replacement for `services/mock.ts`.
- *
- * NOT wired in yet. Nothing here is imported by any page; `mock.ts` remains
- * the live implementation until a later, deliberate step swaps it in once
- * the real routes in `artifacts/api-server` are confirmed to match. This
- * file (and its `services/api/` folder) is purely additive.
+ * Real API client — used throughout the app (see the 27+ page imports of
+ * `@/services/api`) alongside `services/mock.ts`, which some flows still use
+ * — this file is not a dead/unwired seam.
  *
  * ---------------------------------------------------------------------------
- * Auth seam (read this before wiring real auth in)
+ * Auth seam
  * ---------------------------------------------------------------------------
- * Real session-based login (a real Supabase JWT) is explicitly OUT OF SCOPE
- * here — `authService` from mock.ts has NO counterpart in this file on
- * purpose; inventing a fake login flow or a fake JWT would be worse than
- * leaving the seam empty. Two module-level setters are exported from
- * `services/api/http.ts` for whoever wires real auth later:
+ * Real session-based login (a real Supabase JWT) IS wired in — `main.tsx`
+ * calls `setApiAuthTokenGetter` once at startup with a getter reading the
+ * current Supabase session's access token, and `setApiBaseUrl` when
+ * `VITE_API_URL` is set. `authService` from mock.ts has no counterpart here
+ * because real auth goes through `services/supabase.ts` + `AuthContext`
+ * instead, not because this is unimplemented. A third setter,
+ * `setApiSessionTokenGetter` (registered at AppContext module scope, since
+ * it just needs to always read the latest localStorage value — see that
+ * file), attaches the single-active-session token — see the
+ * SESSION_TOKEN_HEADER comment in `artifacts/api-server/src/middlewares/auth.ts`.
  *
- *   setApiBaseUrl(url)              // point requests at the real API server
- *   setApiAuthTokenGetter(getter)   // `() => string | null`, called per-request;
- *                                   // attaches `Authorization: Bearer <token>`
+ *   setApiBaseUrl(url)                 // point requests at the real API server
+ *   setApiAuthTokenGetter(getter)      // `() => Promise<string|null>`; attaches `Authorization: Bearer <token>`
+ *   setApiSessionTokenGetter(getter)   // `() => string|null`; attaches `X-Session-Token`
  *
- * Both are called zero times by default. Every function below builds an
- * absolute `/api/...` path and lets `customFetch` (from
- * `@workspace/api-client-react`) apply the base URL and token — see
- * `services/api/http.ts`'s top comment for why that package's fetch
- * function had to be additionally re-exported to make this possible.
+ * Every function below builds an absolute `/api/...` path and lets
+ * `customFetch` (from `@workspace/api-client-react`) apply the base URL and
+ * token — see `services/api/http.ts`'s top comment for why that package's
+ * fetch function had to be additionally re-exported to make this possible.
  *
  * ---------------------------------------------------------------------------
  * What's implemented, matching services/mock.ts's exported shapes exactly
@@ -80,7 +81,7 @@
  * mismatches — this header just indexes them.
  */
 
-export { setApiAuthTokenGetter, setApiBaseUrl, ApiError } from './api/http';
+export { setApiAuthTokenGetter, setApiBaseUrl, setApiSessionTokenGetter, ApiError } from './api/http';
 
 export { tenantService } from './api/tenants';
 export { courseService, type CourseWithCount } from './api/courses';

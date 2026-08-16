@@ -58,7 +58,7 @@ if (staticDir) {
 // (SQL errors, stack traces) never leak to the client.
 app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
   if (err instanceof HttpError) {
-    res.status(err.status).json({ error: err.message });
+    res.status(err.status).json({ error: err.message, ...(err.code ? { code: err.code } : {}) });
     return;
   }
   req.log?.error({ err }, "Unhandled error");

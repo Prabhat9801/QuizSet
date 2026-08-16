@@ -105,6 +105,31 @@ export function extractBearerToken(req: Request): string {
   return token;
 }
 
+// ---------------------------------------------------------------------------
+// Single-active-session enforcement
+// ---------------------------------------------------------------------------
+// Closes a real business risk: a student can hand their join code + login to
+// friends/family, letting many real people share one paid "seat" while the
+// coaching owner's per-student counts silently undercount actual usage. At
+// most one device may hold the current `active_session_token` at a time.
+//
+// `POST /api/auth/claim-session` (see routes/auth.ts) overwrites the token
+// right after every login, invalidating whatever device held the previous
+// one. The client is expected to send its token back as `X-Session-Token`
+// on every request; `authenticate` below rejects a stale one with 401
+// SESSION_SUPERSEDED so the frontend can force a real sign-out rather than
+// silently keep working as a "logged in but actually kicked" zombie session.
+//
+// Deliberately NOT enforced when the client sends no `X-Session-Token`
+// header at all (as opposed to sending a wrong one) — this keeps the check
+// additive for any caller that hasn't been updated to send it yet (e.g. a
+// mid-rollout frontend build, or a future service-to-service caller that has
+// no concept of "device"), rather than a de-facto forced-logout for
+// everyone the moment this ships. A wrong/stale token, in contrast, always
+// means a genuinely different device has since logged in and must be
+// rejected — there is no safe "maybe" for that case.
+export const SESSION_TOKEN_HEADER = "x-session-token";
+
 /** Verifies the bearer token, loads the matching `profiles` row, and attaches
  * `{ userId, role, tenantId }` to `req.auth`. A valid token with no profile
  * row yet is a real "not onboarded" state, not a crash — reported as 404. */
@@ -116,6 +141,16 @@ export async function authenticate(req: Request, _res: Response, next: NextFunct
     const [profile] = await db.select().from(profiles).where(eq(profiles.id, id)).limit(1);
     if (!profile) {
       throw new HttpError(404, "No profile exists yet for this account.");
+    }
+
+    const sentToken = req.headers[SESSION_TOKEN_HEADER];
+    if (
+      typeof sentToken === "string" &&
+      sentToken.length > 0 &&
+      profile.activeSessionToken !== null &&
+      sentToken !== profile.activeSessionToken
+    ) {
+      throw new HttpError(401, "This session has been superseded by a login on another device.", "SESSION_SUPERSEDED");
     }
 
     req.auth = { userId: profile.id, role: profile.role, tenantId: profile.tenantId };
